@@ -8,7 +8,7 @@ interface SegmentedNavProps {
 
 const SegmentedNav = ({ activeTab, onTabChange }: SegmentedNavProps) => {
     return (
-        <div className="absolute top-12 left-0 right-0 z-50 flex justify-center w-full px-4">
+        <div className="absolute top-20 left-0 right-0 z-50 flex justify-center w-full px-4">
             <div className="relative flex items-center bg-white/10 backdrop-blur-xl border border-white/10 rounded-full p-1.5 shadow-2xl">
                 {/* Sliding Background for Active State */}
                 <div

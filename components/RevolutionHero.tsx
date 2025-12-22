@@ -88,7 +88,7 @@ const RevolutionHero = () => {
                     </div>
 
                     {/* Content */}
-                    <div className={`relative z-10 w-full px-4 md:px-6 flex flex-col items-center transition-all duration-500 ${results.length > 0 ? 'pt-36 justify-start h-full' : 'justify-center h-full'}`}>
+                    <div className={`relative z-10 w-full px-4 md:px-6 flex flex-col items-center transition-all duration-500 ${results.length > 0 ? 'pt-44 justify-start h-full' : 'justify-center h-full'}`}>
                         {/* Title - fades out when searching to make room */}
                         {results.length === 0 && (
                             <h1 className="text-[13vw] md:text-9xl font-bold text-white mb-6 tracking-tighter drop-shadow-2xl text-center select-none font-sans leading-tight animate-scale-up">
