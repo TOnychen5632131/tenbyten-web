@@ -5,9 +5,9 @@ import { Plus, Mic } from 'lucide-react';
 const SearchSection = () => {
     return (
         <div className="flex flex-col items-center justify-center w-full px-4 mt-20 md:mt-32">
-            {/* Google Text Logo */}
+            {/* Tenbyten Text Logo */}
             <h1 className="text-5xl md:text-8xl font-medium text-[#9aa0a6] mb-8 md:mb-12 tracking-tighter opacity-90">
-                Google
+                Tenbyten
             </h1>
 
             {/* Search Bar Container */}

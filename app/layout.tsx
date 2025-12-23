@@ -5,8 +5,15 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Tenbyten",
-  description: "Tenbyten Search",
+  title: "Tenbyten | Discover Markets & Vintage Shops",
+  description: "Find the best farmers markets, vintage clothing stores, and consignment shops in Seattle. Your local guide to sustainable shopping.",
+  openGraph: {
+    title: "Tenbyten | Discover Markets & Vintage Shops",
+    description: "Find the best farmers markets, vintage clothing stores, and consignment shops in Seattle.",
+    type: "website",
+    locale: "en_US",
+    siteName: "Tenbyten",
+  },
 };
 
 export const viewport = {
