@@ -1,17 +1,20 @@
 'use client';
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, X, Mic, Camera, ArrowLeft, ArrowRight } from 'lucide-react';
 import SegmentedNav from './SegmentedNav';
 import MapContainer from './MapContainer';
 import OpportunityDetail from './OpportunityDetail';
 
 const RevolutionHero = () => {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState('search');
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [selectedResult, setSelectedResult] = useState<any>(null);
     const [placeholderIndex, setPlaceholderIndex] = useState(0);
+    const [titleClickCount, setTitleClickCount] = useState(0);
 
     const searchPlaceholders = [
         "Find a vintage market open on Sunday",
@@ -91,7 +94,17 @@ const RevolutionHero = () => {
                     <div className={`relative z-10 w-full px-4 md:px-6 flex flex-col items-center transition-all duration-500 ${results.length > 0 ? 'pt-44 justify-start h-full' : 'justify-center h-full'}`}>
                         {/* Title - fades out when searching to make room */}
                         {results.length === 0 && (
-                            <h1 className="text-[13vw] md:text-9xl font-bold text-white mb-6 tracking-tighter drop-shadow-2xl text-center select-none font-sans leading-tight animate-scale-up">
+                            <h1
+                                onClick={() => {
+                                    const newCount = titleClickCount + 1;
+                                    setTitleClickCount(newCount);
+                                    if (newCount >= 10) {
+                                        router.push('/admin-login');
+                                        setTitleClickCount(0);
+                                    }
+                                }}
+                                className="text-[13vw] md:text-9xl font-bold text-white mb-6 tracking-tighter drop-shadow-2xl text-center select-none font-sans leading-tight animate-scale-up cursor-pointer"
+                            >
                                 Tenbyten
                             </h1>
                         )}
@@ -176,6 +189,10 @@ const RevolutionHero = () => {
                                                             <span className="text-white/40 text-xs flex items-center gap-1">
                                                                 {(item.similarity * 100).toFixed(0)}% Match
                                                             </span>
+                                                            {/* Trust Score Badge */}
+                                                            <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 font-bold">
+                                                                ★ 9.2
+                                                            </span>
                                                         </div>
                                                     </div>
                                                     <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
@@ -208,9 +225,9 @@ const RevolutionHero = () => {
                                 <button className="px-6 py-3 md:py-2.5 rounded-full border border-white/60 bg-white/10 text-white text-sm md:text-base font-medium hover:bg-white/20 active:bg-white/30 transition-all backdrop-blur-sm whitespace-nowrap active:scale-95 shadow-lg">
                                     Nearby Sales
                                 </button>
-                                <button className="px-6 py-3 md:py-2.5 rounded-full border border-white/60 bg-white/10 text-white text-sm md:text-base font-medium hover:bg-white/20 active:bg-white/30 transition-all backdrop-blur-sm whitespace-nowrap active:scale-95 shadow-lg">
+                                <a href="https://heretoday.vercel.app/" className="px-6 py-3 md:py-2.5 rounded-full border border-white/60 bg-white/10 text-white text-sm md:text-base font-medium hover:bg-white/20 active:bg-white/30 transition-all backdrop-blur-sm whitespace-nowrap active:scale-95 shadow-lg flex items-center justify-center">
                                     Digital Card
-                                </button>
+                                </a>
                             </div>
                         )}
                     </div>

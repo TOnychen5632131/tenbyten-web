@@ -1,6 +1,6 @@
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
 import 'leaflet-defaulticon-compatibility';
@@ -8,6 +8,26 @@ import { divIcon } from 'leaflet';
 import React from 'react';
 import { MapPin } from 'lucide-react';
 import ReactDOMServer from 'react-dom/server';
+
+const LocationController = () => {
+    const map = useMap();
+
+    React.useEffect(() => {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    map.flyTo([latitude, longitude], 13);
+                },
+                (error) => {
+                    console.error("Error getting location: ", error);
+                }
+            );
+        }
+    }, [map]);
+
+    return null;
+};
 
 interface MapProps {
     pins: Array<{
@@ -53,6 +73,7 @@ const Map = ({ pins, filterType }: MapProps) => {
                 url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             />
             <ZoomControl position="bottomright" />
+            <LocationController />
 
             {pins.map((pin) => (
                 pin.type === filterType && (

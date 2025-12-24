@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { X, Calendar, MapPin, ExternalLink, User, Users, ChevronLeft } from 'lucide-react';
+import { X, Calendar, MapPin, ExternalLink, User, Users, ChevronLeft, ShieldCheck, TrendingUp, AlertCircle } from 'lucide-react';
 
 interface OpportunityDetailProps {
     data: any;
@@ -113,6 +113,50 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                         <p className="text-white/60 text-sm leading-relaxed font-light">
                             {data.description || "Unlock Your Potential On The Court With Our Basketball Offline Class! Designed For Players Of All Skill Levels, This Hands-On Class Will Help You Sharpen Your Fundamentals."}
                         </p>
+                    </div>
+
+                    {/* Market Analysis / Professional Report */}
+                    <div className="mb-24 bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+                        {/* Decorative Background Gradient */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+
+                        <div className="flex items-center gap-2 mb-4">
+                            <ShieldCheck className="text-blue-400" size={20} />
+                            <h3 className="text-white font-bold text-lg">Market Insight</h3>
+                            <span className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold ml-auto">VERIFIED</span>
+                        </div>
+
+                        {/* Score Cards */}
+                        <div className="grid grid-cols-3 gap-2 mb-4">
+                            <div className="bg-black/20 rounded-xl p-2 text-center border border-white/5">
+                                <div className="text-blue-400 font-bold text-xl">9.2</div>
+                                <div className="text-white/40 text-[10px] uppercase font-medium">Traffic</div>
+                            </div>
+                            <div className="bg-black/20 rounded-xl p-2 text-center border border-white/5">
+                                <div className="text-emerald-400 font-bold text-xl">8.8</div>
+                                <div className="text-white/40 text-[10px] uppercase font-medium">Vendor ROI</div>
+                            </div>
+                            <div className="bg-black/20 rounded-xl p-2 text-center border border-white/5">
+                                <div className="text-purple-400 font-bold text-xl">High</div>
+                                <div className="text-white/40 text-[10px] uppercase font-medium">Safety</div>
+                            </div>
+                        </div>
+
+                        {/* Analysis Text */}
+                        <div className="space-y-3">
+                            <div className="flex gap-3 items-start">
+                                <TrendingUp size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                                <p className="text-white/70 text-sm leading-relaxed">
+                                    <span className="text-white font-medium">Strong Growth Potential.</span> This location has seen a 15% increase in foot traffic over the last month. Highly recommended for vintage and handmade goods.
+                                </p>
+                            </div>
+                            <div className="flex gap-3 items-start">
+                                <AlertCircle size={16} className="text-yellow-400 shrink-0 mt-0.5" />
+                                <p className="text-white/70 text-sm leading-relaxed">
+                                    <span className="text-white font-medium">Competitive Pricing.</span> Booth fees are 10% lower than the area average, offering excellent value for new vendors.
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
