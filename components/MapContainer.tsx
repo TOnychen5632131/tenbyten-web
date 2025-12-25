@@ -23,7 +23,7 @@ const MapContainer = () => {
     ];
 
     return (
-        <div className="relative w-full h-[100dvh] bg-[#1a1a1a] flex flex-col pt-44">
+        <div className="relative w-full h-[100dvh] bg-[#1a1a1a] flex flex-col pt-24 md:pt-28">
             {/* Map visual placeholder */}
             <div className="absolute inset-0 z-0">
                 <MapWithNoSSR pins={MOCK_PINS} filterType={filterType} />
