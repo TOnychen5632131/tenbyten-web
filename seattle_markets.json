@@ -1,0 +1,113 @@
+[
+    {
+        "type": "MARKET",
+        "title": "Capitol Hill Farmers Market",
+        "description": "A bustling year-round market located near the Capitol Hill Light Rail Station. Offers a wide variety of fresh produce, flowers, and artisan foods.",
+        "address": "E Barbara Bailey Way, Seattle, WA 98112",
+        "latitude": 47.6205,
+        "longitude": -122.3213,
+        "images": [
+            "https://images.unsplash.com/photo-1488459716781-31db52582fe9"
+        ],
+        "tags": [
+            "farmers market",
+            "capitol hill",
+            "produce",
+            "sunday"
+        ],
+        "market_details": {
+            "start_time": "11:00",
+            "end_time": "15:00",
+            "is_recurring": true,
+            "recurring_pattern": "Every Sunday",
+            "organizer_name": "Neighborhood Farmers Markets",
+            "admission_fee": 0,
+            "is_indoors": false,
+            "electricity_access": false,
+            "booth_size": "10x10",
+            "categories": [
+                "Produce",
+                "Hot Food",
+                "Flowers"
+            ],
+            "weather_policy": "Rain or Shine",
+            "application_link": "https://seattlefarmersmarkets.org/apply",
+            "season_start_date": "2025-01-01",
+            "season_end_date": "2026-12-31"
+        }
+    },
+    {
+        "type": "MARKET",
+        "title": "West Seattle Farmers Market",
+        "description": "A beloved Sunday ritual in the heart of the West Seattle Junction. Features over 70 vendors during peak season with high quality local produce.",
+        "address": "California Ave SW & SW Alaska St, Seattle, WA 98116",
+        "latitude": 47.5613,
+        "longitude": -122.3868,
+        "images": [
+            "https://images.unsplash.com/photo-1519999482648-25049ddd37b1"
+        ],
+        "tags": [
+            "farmers market",
+            "west seattle",
+            "produce",
+            "sunday"
+        ],
+        "market_details": {
+            "start_time": "10:00",
+            "end_time": "14:00",
+            "is_recurring": true,
+            "recurring_pattern": "Every Sunday",
+            "organizer_name": "Neighborhood Farmers Markets",
+            "admission_fee": 0,
+            "is_indoors": false,
+            "electricity_access": false,
+            "booth_size": "10x10",
+            "categories": [
+                "Produce",
+                "Bakeries",
+                "Meat/Dairy"
+            ],
+            "weather_policy": "Rain or Shine",
+            "application_link": "https://seattlefarmersmarkets.org/apply",
+            "season_start_date": "2025-01-01",
+            "season_end_date": "2026-12-31"
+        }
+    },
+    {
+        "type": "MARKET",
+        "title": "Columbia City Farmers Market",
+        "description": "A lively midweek market in one of Seattle's most diverse neighborhoods. Known for its park-like setting and family-friendly atmosphere.",
+        "address": "37th Ave S & S Edmunds St, Seattle, WA 98118",
+        "latitude": 47.5595,
+        "longitude": -122.2855,
+        "images": [
+            "https://images.unsplash.com/photo-1516594798947-e65505dbb29d"
+        ],
+        "tags": [
+            "farmers market",
+            "columbia city",
+            "produce",
+            "wednesday"
+        ],
+        "market_details": {
+            "start_time": "15:00",
+            "end_time": "19:00",
+            "is_recurring": true,
+            "recurring_pattern": "Wednesdays (May-Oct)",
+            "organizer_name": "Neighborhood Farmers Markets",
+            "admission_fee": 0,
+            "is_indoors": false,
+            "electricity_access": false,
+            "booth_size": "10x10",
+            "categories": [
+                "Produce",
+                "Artisan Foods",
+                "Street Food"
+            ],
+            "weather_policy": "Rain or Shine",
+            "application_link": "https://seattlefarmersmarkets.org/apply",
+            "season_start_date": "2025-01-01",
+            "season_end_date": "2026-12-31"
+        }
+    }
+]

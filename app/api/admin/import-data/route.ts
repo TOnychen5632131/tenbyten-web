@@ -61,11 +61,29 @@ export async function POST(request: NextRequest) {
                 continue;
             }
 
-            // 3. Insert into sales_opportunities
+            // 3. Generate Embedding (Title + Description + Tags + Categories)
+            let embedding = null;
+            try {
+                // Combine text for embedding
+                const tagsStr = tags ? tags.join(' ') : '';
+                const categoriesStr = market_details?.categories ? market_details.categories.join(' ') : '';
+                const textToEmbed = `${title} ${description} ${type} ${tagsStr} ${categoriesStr}`;
+
+                // We'll import this function from utils/openai
+                // Ensure to import { generateEmbedding } from '@/utils/openai'; at the top
+                const { generateEmbedding } = require('@/utils/openai');
+                embedding = await generateEmbedding(textToEmbed);
+            } catch (embedError) {
+                console.warn(`Failed to generate embedding for ${title}:`, embedError);
+                // We continue even if embedding fails, but warn
+            }
+
+            // 4. Insert into sales_opportunities
             const { data: newOpp, error: oppError } = await supabase
                 .from('sales_opportunities')
                 .insert({
-                    type, title, description, address, latitude, longitude, images, tags
+                    type, title, description, address, latitude, longitude, images, tags,
+                    embedding // Add embedding here
                 })
                 .select('id')
                 .single();
@@ -78,21 +96,29 @@ export async function POST(request: NextRequest) {
 
             const oppId = newOpp.id;
 
-            // 4. Insert Details based on Type
+            // 5. Insert Details based on Type
             if (type === 'MARKET' && market_details) {
+                const {
+                    start_time, end_time, is_recurring, recurring_pattern,
+                    organizer_name, admission_fee, is_indoors, electricity_access, booth_size,
+                    categories, weather_policy, application_link,
+                    season_start_date, season_end_date // New fields
+                } = market_details;
+
                 const { error: mktError } = await supabase
                     .from('market_details')
                     .insert({
                         opportunity_id: oppId,
-                        ...market_details
+                        start_time, end_time, is_recurring, recurring_pattern,
+                        organizer_name, admission_fee, is_indoors, electricity_access, booth_size,
+                        categories, weather_policy, application_link,
+                        season_start_date, season_end_date
                     });
 
                 if (mktError) {
-                    // Cleanup parent if child fails? Ideally transaction, but Supabase JS doesn't support complex transactions easily without RPC.
-                    // We'll just report error.
                     report.errors++;
                     report.details.push(`Error inserting details for Market "${title}": ${mktError.message}`);
-                    continue; // Logic flow: The parent exists but details failed. Detailed cleanup omitted for brevity.
+                    continue;
                 }
             } else if (type === 'CONSIGNMENT' && consignment_details) {
                 const { error: conError } = await supabase

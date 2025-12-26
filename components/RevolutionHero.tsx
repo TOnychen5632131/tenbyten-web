@@ -40,7 +40,7 @@ const RevolutionHero = () => {
                 try {
                     const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
                     const data = await res.json();
-                    if (data.success) {
+                    if (data.results) {
                         setResults(data.results || []);
                     }
                 } catch (e) {
@@ -165,7 +165,7 @@ const RevolutionHero = () => {
 
                         {/* Search Results Grid - iOS 26 Glass Style */}
                         {results.length > 0 && (
-                            <div className="w-full max-w-2xl animate-slide-up pb-32 h-full overflow-y-auto no-scrollbar">
+                            <div className="w-full max-w-2xl animate-slide-up pb-32 h-full overflow-y-auto no-scrollbar z-[9999] relative mt-4">
                                 <div className="grid grid-cols-1 gap-4">
                                     {results.map((item: any) => (
                                         <div
