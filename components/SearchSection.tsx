@@ -2,6 +2,8 @@
 import React from 'react';
 import { Plus, Mic } from 'lucide-react';
 
+import SearchLoader from './SearchLoader';
+
 const SearchSection = () => {
     const [query, setQuery] = React.useState('');
     const [results, setResults] = React.useState<any[]>([]);
@@ -20,6 +22,9 @@ const SearchSection = () => {
 
         console.log("Searching for:", term);
         setIsLoading(true);
+        // Show dropdown immediately to show loader
+        setShowResults(true);
+
         try {
             const res = await fetch(`/api/search?q=${encodeURIComponent(term)}`);
             const data = await res.json();
@@ -27,15 +32,12 @@ const SearchSection = () => {
 
             if (data.results && data.results.length > 0) {
                 setResults(data.results);
-                setShowResults(true);
             } else {
                 setResults([]);
-                setShowResults(true); // Show dropdown even if empty to display "No results"
             }
         } catch (error) {
             console.error('Search failed:', error);
             setResults([]);
-            setShowResults(true); // Show error/empty state
         } finally {
             setIsLoading(false);
         }
@@ -105,61 +107,62 @@ const SearchSection = () => {
 
                         {/* Right Actions */}
                         <div className="ml-2 flex items-center gap-3">
-                            {isLoading ? (
-                                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                                // Search Button instead of Mic for clarity if needed, or keeping Mic
-                                <button onClick={handleManualSearch} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors">
-                                    Search
-                                </button>
-                            )}
+                            <button onClick={handleManualSearch} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors">
+                                Search
+                            </button>
                         </div>
                     </div>
 
                     {/* Results Dropdown - Absolute positioning relative to the Input Inner container */}
-                    {showResults && (
+                    {(showResults || isLoading) && (
                         <div
                             className="absolute top-full left-0 right-0 mt-2 bg-[#202124] border border-white/10 rounded-xl overflow-y-auto max-h-[60vh] custom-scrollbar shadow-2xl"
                             style={{ zIndex: 9999 }}
                         >
-                            <div className="p-2 space-y-1">
-                                {results.length === 0 ? (
-                                    <div className="p-6 text-center text-gray-500">
-                                        <p className="text-sm">No results found.</p>
-                                        <p className="text-xs mt-1 opacity-70">Try using different keywords or checking the date.</p>
-                                    </div>
-                                ) : (
-                                    results.map((item: any) => (
-                                        <div
-                                            key={item.id}
-                                            className="p-4 hover:bg-white/5 rounded-xl cursor-pointer transition-colors group/item block text-left"
-                                            onClick={() => window.location.href = `/opportunity/${item.id}`}
-                                        >
-                                            <div className="flex justify-between items-start mb-1">
-                                                <h3 className="text-white font-medium text-lg group-hover/item:text-blue-400 transition-colors">
-                                                    {item.title}
-                                                </h3>
-                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${item.type === 'MARKET'
-                                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                                    : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                                                    }`}>
-                                                    {item.type}
-                                                </span>
-                                            </div>
-                                            <p className="text-gray-400 text-sm line-clamp-2">{item.description}</p>
+                            {isLoading ? (
+                                <SearchLoader />
+                            ) : (
+                                <div className="p-2 space-y-1">
+                                    {results.length === 0 ? (
+                                        <div className="p-6 text-center text-gray-500">
+                                            <p className="text-sm">No results found.</p>
+                                            <p className="text-xs mt-1 opacity-70">Try using different keywords or checking the date.</p>
                                         </div>
-                                    ))
-                                )}
-                            </div>
-                            <div
-                                className="px-4 py-3 bg-white/5 text-center text-xs text-gray-500 border-t border-white/5 cursor-pointer hover:bg-white/10 transition-colors"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowResults(false);
-                                }}
-                            >
-                                Close Results
-                            </div>
+                                    ) : (
+                                        results.map((item: any) => (
+                                            <div
+                                                key={item.id}
+                                                className="p-4 hover:bg-white/5 rounded-xl cursor-pointer transition-colors group/item block text-left"
+                                                onClick={() => window.location.href = `/opportunity/${item.id}`}
+                                            >
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <h3 className="text-white font-medium text-lg group-hover/item:text-blue-400 transition-colors">
+                                                        {item.title}
+                                                    </h3>
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${item.type === 'MARKET'
+                                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                                        : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                                        }`}>
+                                                        {item.type}
+                                                    </span>
+                                                </div>
+                                                <p className="text-gray-400 text-sm line-clamp-2">{item.description}</p>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                            {!isLoading && (
+                                <div
+                                    className="px-4 py-3 bg-white/5 text-center text-xs text-gray-500 border-t border-white/5 cursor-pointer hover:bg-white/10 transition-colors"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowResults(false);
+                                    }}
+                                >
+                                    Close Results
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
