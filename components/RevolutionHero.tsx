@@ -12,6 +12,8 @@ const RevolutionHero = () => {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [searchStatus, setSearchStatus] = useState('');
     const [selectedResult, setSelectedResult] = useState<any>(null);
     const [placeholderIndex, setPlaceholderIndex] = useState(0);
     const [titleClickCount, setTitleClickCount] = useState(0);
@@ -32,34 +34,82 @@ const RevolutionHero = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // Debounced search effect
-    React.useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (query.length >= 1) {
-                setIsSearching(true);
-                try {
-                    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-                    const data = await res.json();
-                    if (data.results) {
-                        setResults(data.results || []);
-                    }
-                } catch (e) {
-                    console.error('Search failed', e);
-                } finally {
-                    setIsSearching(false);
-                }
-            } else {
-                setResults([]);
-            }
-        }, 500); // 500ms debounce
+    // Simulated Progress Logic
+    const runSearchSimulation = async () => {
+        setIsSearching(true);
+        setResults([]); // Clear previous results immediately
+        setProgress(0);
 
-        return () => clearTimeout(timer);
-    }, [query]);
+        const stages = [
+            { pct: 10, msg: "Encrypting Query..." },
+            { pct: 30, msg: "AI Semantic Analysis..." },
+            { pct: 60, msg: "Scanning Vector Database..." },
+            { pct: 85, msg: "Filtering & Ranking..." },
+            { pct: 95, msg: "Finalizing..." }
+        ];
+
+        for (const stage of stages) {
+            setSearchStatus(stage.msg);
+            setProgress(stage.pct);
+            // Random delay between steps to feel "organic"
+            // Adjusted to ~3s total (avg 600ms * 5 stages)
+            await new Promise(r => setTimeout(r, Math.random() * 400 + 400));
+        }
+    };
+
+    // Manual Search Handler
+    const handleSearch = async () => {
+        if (!query.trim()) {
+            setResults([]);
+            setIsSearching(false);
+            return;
+        }
+
+        setIsSearching(true);
+        setResults([]); // Clear previous results immediately
+        setProgress(0);
+
+        // Start simulation and fetch in parallel
+        const simulationPromise = runSearchSimulation();
+
+        // Actual Fetch
+        const fetchPromise = (async () => {
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                return data.results || [];
+            } catch (e) {
+                console.error('Search failed', e);
+                return [];
+            }
+        })();
+
+        await simulationPromise;
+        const realResults = await fetchPromise;
+
+        setProgress(100);
+        setSearchStatus("Complete");
+
+        // Small delay to let user see 100%
+        await new Promise(r => setTimeout(r, 400));
+
+        setResults(realResults);
+        setIsSearching(false);
+    };
+
+    // Handle Enter Key
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    };
 
     // Clear search helper
     const handleClear = () => {
         setQuery('');
         setResults([]);
+        setIsSearching(false);
+        setProgress(0);
     };
 
     return (
@@ -93,7 +143,7 @@ const RevolutionHero = () => {
                     {/* Content */}
                     <div className={`relative z-10 w-full px-4 md:px-6 flex flex-col items-center transition-all duration-500 ${results.length > 0 ? 'pt-44 justify-start h-full' : 'justify-center h-full'}`}>
                         {/* Title - fades out when searching to make room */}
-                        {results.length === 0 && (
+                        {results.length === 0 && !isSearching && (
                             <h1
                                 onClick={() => {
                                     const newCount = titleClickCount + 1;
@@ -110,57 +160,76 @@ const RevolutionHero = () => {
                         )}
 
                         {/* Search Bar Container - Transitions from Center to Top */}
-                        <div className={`w-full max-w-2xl flex items-center gap-3 transition-all duration-500 z-50 ${results.length > 0 ? 'mb-4' : 'mb-8'}`}>
+                        <div className={`w-full max-w-2xl flex flex-col items-center transition-all duration-500 z-50 ${results.length > 0 || isSearching ? 'mb-4' : 'mb-8'}`}>
                             {/* Back Button (Only visible when results exist) */}
-                            {results.length > 0 && (
-                                <button
-                                    onClick={handleClear}
-                                    className="p-3 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full text-white hover:bg-white/20 active:scale-95 transition-all animate-fade-in"
-                                >
-                                    <ArrowLeft size={20} />
-                                </button>
-                            )}
-
-                            {/* Main Search Input */}
-                            <div className="flex-1 bg-white rounded-full flex items-center px-4 md:px-5 py-3 md:py-3.5 shadow-2xl transform transition-all duration-300">
-                                {/* AI Green Orb Icon */}
-                                {/* AI Green Orb Icon */}
-                                <div className={`relative w-8 h-8 rounded-full bg-gradient-to-b from-[#8beca8] to-[#15803d] shadow-[inset_0_0_10px_rgba(255,255,255,0.6),0_4px_10px_rgba(22,101,52,0.4)] mr-2 flex-shrink-0 transition-transform duration-700 ${isSearching ? 'animate-pulse scale-110' : ''}`}>
-                                    {/* High Gloss Specular Highlight */}
-                                    <div className="absolute top-[10%] left-[15%] w-[40%] h-[25%] bg-gradient-to-b from-white to-transparent rounded-full opacity-90 blur-[1px]" />
-                                    {/* Bottom Reflection */}
-                                    <div className="absolute bottom-[5%] left-[20%] w-[60%] h-[20%] bg-gradient-to-t from-[#4ade80] to-transparent rounded-full opacity-60 blur-[2px]" />
-                                </div>
-                                <div className="relative flex-1 h-full flex items-center overflow-hidden">
-                                    {/* Animated Placeholder */}
-                                    {!query && (
-                                        <div className="absolute inset-0 flex items-center">
-                                            <span
-                                                key={placeholderIndex}
-                                                className="animate-slide-up-fade text-[#C4C3C5] text-base md:text-lg truncate font-normal pointer-events-none"
-                                            >
-                                                {searchPlaceholders[placeholderIndex]}
-                                            </span>
-                                        </div>
-                                    )}
-                                    <input
-                                        type="text"
-                                        value={query}
-                                        onChange={(e) => setQuery(e.target.value)}
-                                        className="w-full h-full bg-transparent border-none outline-none text-black text-base md:text-lg px-0 truncate font-normal relative z-10"
-                                        spellCheck={false}
-                                    />
-                                </div>
-                                {query && (
-                                    <X
-                                        className="text-gray-400 w-5 h-5 cursor-pointer hover:text-gray-600 transition-colors mr-2"
+                            <div className="w-full flex items-center gap-3">
+                                {(results.length > 0) && (
+                                    <button
                                         onClick={handleClear}
-                                    />
+                                        className="p-3 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full text-white hover:bg-white/20 active:scale-95 transition-all animate-fade-in"
+                                    >
+                                        <ArrowLeft size={20} />
+                                    </button>
                                 )}
-                                <button className="ml-2 px-4 py-1.5 bg-[#4285f4] text-white rounded-full text-sm font-semibold hover:bg-[#3367d6] transition-colors shadow-md">
-                                    Search
-                                </button>
+
+                                {/* Main Search Input */}
+                                <div className="flex-1 bg-white rounded-full flex items-center px-4 md:px-5 py-3 md:py-3.5 shadow-2xl transform transition-all duration-300">
+                                    {/* AI Green Orb Icon */}
+                                    <div className={`relative w-8 h-8 rounded-full bg-gradient-to-b from-[#8beca8] to-[#15803d] shadow-[inset_0_0_10px_rgba(255,255,255,0.6),0_4px_10px_rgba(22,101,52,0.4)] mr-2 flex-shrink-0 transition-transform duration-700 ${isSearching ? 'animate-pulse scale-110' : ''}`}>
+                                        <div className="absolute top-[10%] left-[15%] w-[40%] h-[25%] bg-gradient-to-b from-white to-transparent rounded-full opacity-90 blur-[1px]" />
+                                        <div className="absolute bottom-[5%] left-[20%] w-[60%] h-[20%] bg-gradient-to-t from-[#4ade80] to-transparent rounded-full opacity-60 blur-[2px]" />
+                                    </div>
+                                    <div className="relative flex-1 h-full flex items-center overflow-hidden">
+                                        {/* Animated Placeholder */}
+                                        {!query && (
+                                            <div className="absolute inset-0 flex items-center">
+                                                <span
+                                                    key={placeholderIndex}
+                                                    className="animate-slide-up-fade text-[#C4C3C5] text-base md:text-lg truncate font-normal pointer-events-none"
+                                                >
+                                                    {searchPlaceholders[placeholderIndex]}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <input
+                                            type="text"
+                                            value={query}
+                                            onChange={(e) => setQuery(e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            className="w-full h-full bg-transparent border-none outline-none text-black text-base md:text-lg px-0 truncate font-normal relative z-10"
+                                            spellCheck={false}
+                                        />
+                                    </div>
+                                    {query && (
+                                        <X
+                                            className="text-gray-400 w-5 h-5 cursor-pointer hover:text-gray-600 transition-colors mr-2"
+                                            onClick={handleClear}
+                                        />
+                                    )}
+                                    <button
+                                        onClick={handleSearch}
+                                        className="ml-2 px-4 py-1.5 bg-[#4285f4] text-white rounded-full text-sm font-semibold hover:bg-[#3367d6] transition-colors shadow-md active:scale-95"
+                                    >
+                                        Search
+                                    </button>
+                                </div>
                             </div>
+
+                            {/* PROGRESS BAR & STATUS */}
+                            {isSearching && (
+                                <div className="w-full max-w-xl mt-6 px-4 animate-fade-in flex flex-col gap-2">
+                                    <div className="flex justify-between items-center text-xs font-mono text-[#8beca8] uppercase tracking-widest">
+                                        <span>{searchStatus}</span>
+                                        <span>{progress}%</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-[#8beca8] to-emerald-500 shadow-[0_0_10px_#8beca8] transition-all duration-300 ease-out"
+                                            style={{ width: `${progress}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Search Results Grid - iOS 26 Glass Style */}
@@ -220,7 +289,7 @@ const RevolutionHero = () => {
                         )}
 
                         {/* Buttons (Hidden when searching) */}
-                        {results.length === 0 && (
+                        {results.length === 0 && !isSearching && (
                             <div className="flex flex-wrap justify-center gap-3 md:gap-4 w-full px-2">
                                 <button className="px-6 py-3 md:py-2.5 rounded-full border border-white/60 bg-white/10 text-white text-sm md:text-base font-medium hover:bg-white/20 active:bg-white/30 transition-all backdrop-blur-sm whitespace-nowrap active:scale-95 shadow-lg">
                                     Nearby Sales
