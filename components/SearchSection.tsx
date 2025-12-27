@@ -1,14 +1,14 @@
 'use client';
 import React from 'react';
-import { Plus, Mic } from 'lucide-react';
-
-import SearchLoader from './SearchLoader';
+import { Plus, Mic, X } from 'lucide-react';
+import OpportunityDetail from './OpportunityDetail';
 
 const SearchSection = () => {
     const [query, setQuery] = React.useState('');
     const [results, setResults] = React.useState<any[]>([]);
     const [isLoading, setIsLoading] = React.useState(false);
     const [showResults, setShowResults] = React.useState(false);
+    const [selectedOpportunity, setSelectedOpportunity] = React.useState<any>(null);
 
     // Use a ref to track the latest query for debouncing, avoiding re-renders just for the timeout logic
     const searchTimeout = React.useRef<NodeJS.Timeout | null>(null);
@@ -22,9 +22,6 @@ const SearchSection = () => {
 
         console.log("Searching for:", term);
         setIsLoading(true);
-        // Show dropdown immediately to show loader
-        setShowResults(true);
-
         try {
             const res = await fetch(`/api/search?q=${encodeURIComponent(term)}`);
             const data = await res.json();
@@ -32,15 +29,23 @@ const SearchSection = () => {
 
             if (data.results && data.results.length > 0) {
                 setResults(data.results);
+                setShowResults(true);
             } else {
                 setResults([]);
+                setShowResults(true); // Show dropdown even if empty to display "No results"
             }
         } catch (error) {
             console.error('Search failed:', error);
             setResults([]);
+            setShowResults(true); // Show error/empty state
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // Close the modal
+    const handleCloseDetail = () => {
+        setSelectedOpportunity(null);
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,6 +112,7 @@ const SearchSection = () => {
 
                         {/* Right Actions */}
                         <div className="ml-2 flex items-center gap-3">
+                            {/* Removed Spinner from here, moving to dropdown for better UX */}
                             <button onClick={handleManualSearch} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors">
                                 Search
                             </button>
@@ -114,45 +120,60 @@ const SearchSection = () => {
                     </div>
 
                     {/* Results Dropdown - Absolute positioning relative to the Input Inner container */}
+                    {/* Results Dropdown */}
                     {(showResults || isLoading) && (
                         <div
-                            className="absolute top-full left-0 right-0 mt-2 bg-[#202124] border border-white/10 rounded-xl overflow-y-auto max-h-[60vh] custom-scrollbar shadow-2xl"
+                            className="absolute top-full left-0 right-0 mt-2 bg-[#202124] border border-white/10 rounded-xl overflow-hidden shadow-2xl"
                             style={{ zIndex: 9999 }}
                         >
-                            {isLoading ? (
-                                <SearchLoader />
-                            ) : (
-                                <div className="p-2 space-y-1">
-                                    {results.length === 0 ? (
-                                        <div className="p-6 text-center text-gray-500">
-                                            <p className="text-sm">No results found.</p>
-                                            <p className="text-xs mt-1 opacity-70">Try using different keywords or checking the date.</p>
-                                        </div>
-                                    ) : (
-                                        results.map((item: any) => (
-                                            <div
-                                                key={item.id}
-                                                className="p-4 hover:bg-white/5 rounded-xl cursor-pointer transition-colors group/item block text-left"
-                                                onClick={() => window.location.href = `/opportunity/${item.id}`}
-                                            >
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <h3 className="text-white font-medium text-lg group-hover/item:text-blue-400 transition-colors">
-                                                        {item.title}
-                                                    </h3>
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${item.type === 'MARKET'
-                                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                                        : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                                                        }`}>
-                                                        {item.type}
-                                                    </span>
-                                                </div>
-                                                <p className="text-gray-400 text-sm line-clamp-2">{item.description}</p>
+                            <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-2 space-y-1">
+                                {isLoading ? (
+                                    // SKELETON LOADER
+                                    Array.from({ length: 3 }).map((_, i) => (
+                                        <div key={i} className="p-4 rounded-xl border border-white/5 animate-pulse">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="h-5 bg-white/10 rounded w-1/3"></div>
+                                                <div className="h-4 bg-white/10 rounded w-16"></div>
                                             </div>
-                                        ))
-                                    )}
-                                </div>
-                            )}
-                            {!isLoading && (
+                                            <div className="space-y-2">
+                                                <div className="h-3 bg-white/10 rounded w-full"></div>
+                                                <div className="h-3 bg-white/10 rounded w-2/3"></div>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : results.length === 0 ? (
+                                    <div className="p-6 text-center text-gray-500">
+                                        <p className="text-sm">No results found.</p>
+                                        <p className="text-xs mt-1 opacity-70">Try using different keywords or checking the date.</p>
+                                    </div>
+                                ) : (
+                                    results.map((item: any) => (
+                                        <div
+                                            key={item.id}
+                                            className="p-4 hover:bg-white/5 rounded-xl cursor-pointer transition-colors group/item block text-left"
+                                            onClick={() => {
+                                                setSelectedOpportunity(item);
+                                                setShowResults(false);
+                                            }}
+                                        >
+                                            <div className="flex justify-between items-start mb-1">
+                                                <h3 className="text-white font-medium text-lg group-hover/item:text-blue-400 transition-colors">
+                                                    {item.title}
+                                                </h3>
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${item.type === 'MARKET'
+                                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                                    : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                                    }`}>
+                                                    {item.type}
+                                                </span>
+                                            </div>
+                                            <p className="text-gray-400 text-sm line-clamp-2">{item.description}</p>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            {!isLoading && results.length > 0 && (
                                 <div
                                     className="px-4 py-3 bg-white/5 text-center text-xs text-gray-500 border-t border-white/5 cursor-pointer hover:bg-white/10 transition-colors"
                                     onClick={(e) => {
@@ -169,10 +190,18 @@ const SearchSection = () => {
             </div>
 
             {/* Backdrop to close results when clicking outside */}
-            {showResults && (
+            {showResults && !isLoading && (
                 <div
                     className="fixed inset-0 z-[90]"
                     onClick={() => setShowResults(false)}
+                />
+            )}
+
+            {/* DETAIL MODAL OVERLAY */}
+            {selectedOpportunity && (
+                <OpportunityDetail
+                    data={selectedOpportunity}
+                    onClose={handleCloseDetail}
                 />
             )}
         </div>
