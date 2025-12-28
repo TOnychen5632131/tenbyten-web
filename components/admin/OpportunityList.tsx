@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pencil, Trash2, Search, ChevronLeft, ChevronRight, CheckSquare, Square, RefreshCw } from 'lucide-react';
+import { Pencil, Trash2, Search, ChevronLeft, ChevronRight, CheckSquare, Square, RefreshCw, Link2 } from 'lucide-react';
 
 interface OpportunityListProps {
     onEdit: (item: any) => void;
@@ -11,6 +11,9 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [searchQuery, setSearchQuery] = useState('');
     const [refreshingId, setRefreshingId] = useState<string | null>(null);
+    const [editingPlaceIdItem, setEditingPlaceIdItem] = useState<any | null>(null);
+    const [placeIdInput, setPlaceIdInput] = useState('');
+    const [savingPlaceId, setSavingPlaceId] = useState(false);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -117,6 +120,49 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
     const handleFilterChange = (val: string) => {
         setFilterType(val);
         setCurrentPage(1);
+    };
+
+    const openPlaceIdEditor = (item: any) => {
+        setEditingPlaceIdItem(item);
+        setPlaceIdInput(item?.google_place_id || '');
+    };
+
+    const closePlaceIdEditor = () => {
+        setEditingPlaceIdItem(null);
+        setPlaceIdInput('');
+    };
+
+    const handlePlaceIdSave = async () => {
+        if (!editingPlaceIdItem?.id) return;
+        setSavingPlaceId(true);
+        try {
+            const payload = {
+                id: editingPlaceIdItem.id,
+                google_place_id: placeIdInput.trim() || null
+            };
+            const res = await fetch('/api/opportunities', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok || data?.error) {
+                throw new Error(data?.error || 'Failed to update Google Place ID');
+            }
+            setOpportunities(prev =>
+                prev.map(item =>
+                    item.id === editingPlaceIdItem.id
+                        ? { ...item, google_place_id: payload.google_place_id }
+                        : item
+                )
+            );
+            closePlaceIdEditor();
+        } catch (error) {
+            console.error('Failed to update Google Place ID:', error);
+            alert('Failed to update Google Place ID. Check console for details.');
+        } finally {
+            setSavingPlaceId(false);
+        }
     };
 
     const handleRefreshReviews = async (item: any) => {
@@ -265,6 +311,13 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
                                     <td className="p-4 text-right">
                                         <div className="flex justify-end gap-2">
                                             <button
+                                                onClick={(e) => { e.stopPropagation(); openPlaceIdEditor(item); }}
+                                                className={`p-2 rounded-lg hover:bg-white/10 transition-colors ${item.google_place_id ? 'text-emerald-300' : 'text-white/40 hover:text-white'}`}
+                                                title="Edit Google Place ID"
+                                            >
+                                                <Link2 size={16} />
+                                            </button>
+                                            <button
                                                 onClick={(e) => { e.stopPropagation(); handleRefreshReviews(item); }}
                                                 disabled={refreshingId === item.id}
                                                 className="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -316,6 +369,42 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
                     </div>
                 </div>
             </div>
+
+            {editingPlaceIdItem && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                    <div className="absolute inset-0" onClick={closePlaceIdEditor} />
+                    <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#111] p-5 shadow-2xl">
+                        <div className="text-white font-bold text-lg">Edit Google Place ID</div>
+                        <div className="text-white/50 text-xs mt-1 truncate">
+                            {editingPlaceIdItem.title || 'Listing'}
+                        </div>
+                        <input
+                            value={placeIdInput}
+                            onChange={(e) => setPlaceIdInput(e.target.value)}
+                            placeholder="e.g. ChIJN1t_tDeuEmsRUsoyG83frY4"
+                            className="mt-4 w-full rounded-xl bg-black/20 border border-white/10 px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50"
+                        />
+                        <div className="text-white/40 text-[11px] mt-2">
+                            Paste the Google Place ID. Leave blank to clear.
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button
+                                onClick={closePlaceIdEditor}
+                                className="px-4 py-2 rounded-lg bg-white/5 text-white/70 hover:bg-white/10 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handlePlaceIdSave}
+                                disabled={savingPlaceId}
+                                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {savingPlaceId ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
