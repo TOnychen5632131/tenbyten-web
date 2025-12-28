@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { X, Calendar, MapPin, ExternalLink, User, ChevronLeft, ShieldCheck, Star, MessageSquare } from 'lucide-react';
+import { X, Calendar, MapPin, ExternalLink, User, Users, ChevronLeft, ShieldCheck, Star, MessageSquare } from 'lucide-react';
 
 interface OpportunityDetailProps {
     data: any;
