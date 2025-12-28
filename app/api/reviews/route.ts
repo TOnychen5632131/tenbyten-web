@@ -42,21 +42,24 @@ export async function GET(req: NextRequest) {
             });
         }
 
-        // 2. If Cache Miss, we need to fetch from Google
-        if (!GOOGLE_API_KEY) {
-            console.error("Missing Google API Key");
-            debugInfo.google_api_key_present = false;
-            if (cached.length > 0) {
-                return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
+        const updateReviewMeta = async (updates: Record<string, any>) => {
+            if (!opportunity_id) return;
+            const payload = { ...updates };
+            if (!payload.google_reviews_fetched_at) {
+                payload.google_reviews_fetched_at = new Date().toISOString();
             }
-            return NextResponse.json({ source: 'NONE', reviews: [], ...(debug ? { debug: debugInfo } : {}) });
-        }
-        debugInfo.google_api_key_present = true;
+            const { error } = await supabase
+                .from('sales_opportunities')
+                .update(payload)
+                .eq('id', opportunity_id);
 
-        // 2a. Get the Opportunity details to know what to search for
+            if (error) console.error("Review meta update error:", error);
+        };
+
+        // 2. Get the Opportunity details to know what to search for
         const { data: opportunity } = await supabase
             .from('sales_opportunities')
-            .select('title, address, google_place_id')
+            .select('title, address, google_place_id, google_reviews_fetched_at, google_reviews_status, google_reviews_count, google_rating, google_user_ratings_total')
             .eq('id', opportunity_id)
             .single();
 
@@ -67,17 +70,43 @@ export async function GET(req: NextRequest) {
         debugInfo.opportunity = {
             title: opportunity.title,
             address: opportunity.address,
-            google_place_id: opportunity.google_place_id
+            google_place_id: opportunity.google_place_id,
+            google_reviews_fetched_at: opportunity.google_reviews_fetched_at,
+            google_reviews_status: opportunity.google_reviews_status,
+            google_reviews_count: opportunity.google_reviews_count,
+            google_rating: opportunity.google_rating,
+            google_user_ratings_total: opportunity.google_user_ratings_total
         };
+
+        if (!force && cached.length === 0) {
+            return NextResponse.json({
+                source: 'CACHE_EMPTY',
+                reviews: [],
+                ...(debug ? { debug: debugInfo } : {})
+            });
+        }
+
+        // 3. If Cache Miss, we need to fetch from Google
+        if (!GOOGLE_API_KEY) {
+            console.error("Missing Google API Key");
+            debugInfo.google_api_key_present = false;
+            await updateReviewMeta({ google_reviews_status: 'NO_API_KEY' });
+            if (cached.length > 0) {
+                return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
+            }
+            return NextResponse.json({ source: 'NONE', reviews: [], ...(debug ? { debug: debugInfo } : {}) });
+        }
+        debugInfo.google_api_key_present = true;
 
         let placeId = opportunity.google_place_id;
 
-        // 2b. If we don't have a place_id yet, Search for it
+        // 3a. If we don't have a place_id yet, Search for it
         if (!placeId) {
             const query = [opportunity.title, opportunity.address].filter(Boolean).join(' ').trim();
             debugInfo.search_query = query;
 
             if (!query) {
+                await updateReviewMeta({ google_reviews_status: 'NO_QUERY', google_reviews_count: 0 });
                 if (cached.length > 0) {
                     return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
                 }
@@ -98,11 +127,16 @@ export async function GET(req: NextRequest) {
             if (searchData?.status && searchData.status !== 'OK') {
                 console.warn("Google search status:", searchData.status, searchData.error_message || '');
                 if (searchData.status === 'ZERO_RESULTS') {
+                    await updateReviewMeta({ google_reviews_status: 'ZERO_RESULTS', google_reviews_count: 0 });
                     if (cached.length > 0) {
                         return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
                     }
                     return NextResponse.json({ source: 'GOOGLE_ZERO', reviews: [], ...(debug ? { debug: debugInfo } : {}) });
                 }
+                await updateReviewMeta({
+                    google_reviews_status: `SEARCH_${searchData.status || 'ERROR'}`,
+                    google_reviews_count: 0
+                });
                 return NextResponse.json(
                     {
                         source: 'GOOGLE_SEARCH_ERROR',
@@ -128,13 +162,14 @@ export async function GET(req: NextRequest) {
 
         if (!placeId) {
             // Found nothing on Google
+            await updateReviewMeta({ google_reviews_status: 'ZERO_RESULTS', google_reviews_count: 0 });
             if (cached.length > 0) {
                 return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
             }
             return NextResponse.json({ source: 'GOOGLE_ZERO', reviews: [], ...(debug ? { debug: debugInfo } : {}) });
         }
 
-        // 3. Fetch Reviews using Place Details API
+        // 4. Fetch Reviews using Place Details API
         const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=reviews,rating,user_ratings_total&key=${GOOGLE_API_KEY}`;
         const detailsRes = await fetch(detailsUrl);
         const detailsData = await detailsRes.json();
@@ -147,11 +182,16 @@ export async function GET(req: NextRequest) {
         if (detailsData?.status && detailsData.status !== 'OK') {
             console.warn("Google details status:", detailsData.status, detailsData.error_message || '');
             if (detailsData.status === 'ZERO_RESULTS') {
+                await updateReviewMeta({ google_reviews_status: 'ZERO_RESULTS', google_reviews_count: 0 });
                 if (cached.length > 0) {
                     return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
                 }
                 return NextResponse.json({ source: 'GOOGLE_ZERO', reviews: [], ...(debug ? { debug: debugInfo } : {}) });
             }
+            await updateReviewMeta({
+                google_reviews_status: `DETAILS_${detailsData.status || 'ERROR'}`,
+                google_reviews_count: 0
+            });
             return NextResponse.json(
                 {
                     source: 'GOOGLE_DETAILS_ERROR',
@@ -164,6 +204,7 @@ export async function GET(req: NextRequest) {
         }
 
         if (!detailsData?.result) {
+            await updateReviewMeta({ google_reviews_status: 'NO_RESULT', google_reviews_count: 0 });
             if (cached.length > 0) {
                 return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
             }
@@ -175,18 +216,25 @@ export async function GET(req: NextRequest) {
         debugInfo.details_rating = detailsData.result?.rating;
         debugInfo.details_user_ratings_total = detailsData.result?.user_ratings_total;
 
-        if (force && cached.length > 0) {
-            const { error: deleteError } = await supabase
-                .from('opportunity_reviews')
-                .delete()
-                .eq('opportunity_id', opportunity_id);
+        const googleRating = typeof detailsData.result?.rating === 'number' ? detailsData.result.rating : null;
+        const googleUserRatingsTotal = typeof detailsData.result?.user_ratings_total === 'number'
+            ? detailsData.result.user_ratings_total
+            : null;
 
-            if (deleteError) console.error("Cache delete error:", deleteError);
-        }
+        const limitedReviews = googleReviews.slice(0, 1);
+        debugInfo.limited_review_count = limitedReviews.length;
 
-        // 4. Cache them in Database
-        if (googleReviews.length > 0) {
-            const rowsToInsert = googleReviews.map((r: any) => ({
+        const metaUpdate: Record<string, any> = {
+            google_reviews_status: 'OK',
+            google_reviews_count: googleReviews.length
+        };
+        if (googleRating !== null) metaUpdate.google_rating = googleRating;
+        if (googleUserRatingsTotal !== null) metaUpdate.google_user_ratings_total = googleUserRatingsTotal;
+        await updateReviewMeta(metaUpdate);
+
+        // 5. Cache them in Database
+        if (limitedReviews.length > 0 && cached.length === 0) {
+            const rowsToInsert = limitedReviews.map((r: any) => ({
                 opportunity_id: opportunity_id,
                 author_name: r.author_name,
                 author_photo_url: r.profile_photo_url,
@@ -198,14 +246,17 @@ export async function GET(req: NextRequest) {
 
             const { error: insertError } = await supabase
                 .from('opportunity_reviews')
-                .insert(rowsToInsert);
+                .upsert(rowsToInsert, {
+                    onConflict: 'opportunity_id,author_name,text',
+                    ignoreDuplicates: true
+                });
 
             if (insertError) console.error("Cache insert error:", insertError);
         }
 
         return NextResponse.json({
             source: 'GOOGLE_LIVE',
-            reviews: googleReviews.map((r: any) => ({
+            reviews: limitedReviews.map((r: any) => ({
                 author_name: r.author_name,
                 author_photo_url: r.profile_photo_url,
                 rating: r.rating,

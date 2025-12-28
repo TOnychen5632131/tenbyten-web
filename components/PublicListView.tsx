@@ -159,9 +159,11 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                                             )}
 
                                             {/* Rating Badge */}
-                                            <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 font-bold">
-                                                <Star size={10} fill="currentColor" /> 4.8
-                                            </span>
+                                            {Number.isFinite(Number(item.google_rating)) && (
+                                                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 font-bold">
+                                                    <Star size={10} fill="currentColor" /> {Number(item.google_rating).toFixed(1)}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-white/20 transition-colors">

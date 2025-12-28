@@ -3,6 +3,23 @@
 ALTER TABLE sales_opportunities 
 ADD COLUMN IF NOT EXISTS google_place_id TEXT;
 
+-- Store Google aggregate rating data for list views
+ALTER TABLE sales_opportunities
+ADD COLUMN IF NOT EXISTS google_rating NUMERIC;
+
+ALTER TABLE sales_opportunities
+ADD COLUMN IF NOT EXISTS google_user_ratings_total INTEGER;
+
+-- Track Google review fetch status to avoid repeated API calls
+ALTER TABLE sales_opportunities
+ADD COLUMN IF NOT EXISTS google_reviews_fetched_at TIMESTAMP WITH TIME ZONE;
+
+ALTER TABLE sales_opportunities
+ADD COLUMN IF NOT EXISTS google_reviews_status TEXT;
+
+ALTER TABLE sales_opportunities
+ADD COLUMN IF NOT EXISTS google_reviews_count INTEGER;
+
 -- 2. Create Reviews Table
 -- This table acts as a cache for Google Reviews to save API costs and improve speed
 CREATE TABLE IF NOT EXISTS opportunity_reviews (
