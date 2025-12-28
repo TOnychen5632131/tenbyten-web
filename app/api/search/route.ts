@@ -57,58 +57,67 @@ export async function GET(request: NextRequest) {
         let results = vectorResults || [];
         console.log(`✅ [AI Search] Vector Search found ${results.length} raw matches.`);
 
-        // 4. Post-processing Filter (Date/Seasonality)
+        // 4. Post-processing Filter & Merge Details
         if (results.length > 0) {
             const ids = results.map((r: any) => r.id);
-            const { data: fetchedDetails } = await supabase
+
+            // Fetch Market Details
+            const { data: marketDetails } = await supabase
                 .from('market_details')
-                .select('opportunity_id, season_start_date, season_end_date, recurring_pattern')
+                .select('*') // Fetch ALL details for UI
                 .in('opportunity_id', ids);
 
-            if (fetchedDetails) {
-                const dateObj = targetDate ? new Date(targetDate) : new Date();
-                console.log(`📅 [AI Search] Filtering against Date: ${dateObj.toISOString().split('T')[0]} (Target: ${targetDate || 'None'})`);
-                const detailsMap = new Map(fetchedDetails.map((d: any) => [d.opportunity_id, d]));
+            // Fetch Consignment Details (if any shop types exist)
+            const { data: consignmentDetails } = await supabase
+                .from('consignment_details')
+                .select('*')
+                .in('opportunity_id', ids);
+
+            const detailsMap = new Map();
+            if (marketDetails) marketDetails.forEach((d: any) => detailsMap.set(d.opportunity_id, d));
+            if (consignmentDetails) consignmentDetails.forEach((d: any) => detailsMap.set(d.opportunity_id, d));
+
+            results = results.map((r: any) => {
+                const detail = detailsMap.get(r.id);
+                // Merge detail into result
+                return detail ? { ...r, ...detail } : r;
+            });
+
+            // Apply Filters (Date/Seasonality)
+            if (targetDate) {
+                console.log(`📅 [AI Search] Filtering against Date: ${targetDate}`);
+                const dateObj = new Date(targetDate);
 
                 results = results.filter((r: any) => {
-                    const detail = detailsMap.get(r.id);
-                    if (!detail) return true;
+                    // Only filter Markets by date/season
+                    if (r.type !== 'MARKET') return true;
 
                     let keep = true;
-                    let rejectionReason = "";
-
-                    // 1. Seasonality Check (Always apply if targetDate is present)
-                    if (targetDate && detail.season_start_date && detail.season_end_date) {
-                        const start = new Date(detail.season_start_date);
-                        const end = new Date(detail.season_end_date);
-                        // Check if the target date is within the operational season year/range
-                        // If "Next week" is 2026-01-01, we want to know if the market is open in 2026 generally?
-                        // Yes, the simple range check works.
+                    // Seasonality Check
+                    if (r.season_start_date && r.season_end_date) {
+                        const start = new Date(r.season_start_date);
+                        const end = new Date(r.season_end_date);
                         if (dateObj < start || dateObj > end) {
                             keep = false;
-                            rejectionReason = `Out of season (${detail.season_start_date} ~ ${detail.season_end_date})`;
+                            // console.log(`   ⛔ Filtered out "${r.title}": Out of season`);
                         }
                     }
 
-                    // 2. Day of Week Check (Only if dayOfWeek is explicitly mentioned)
-                    if (keep && dayOfWeek && detail.recurring_pattern) {
-                        const pattern = detail.recurring_pattern.toLowerCase();
+                    // Day of Week Check
+                    if (keep && dayOfWeek && r.recurring_pattern) {
+                        const pattern = r.recurring_pattern.toLowerCase();
                         const dayTarget = dayOfWeek.toLowerCase();
-
-                        // If pattern doesn't contain the requested day (and isn't daily)
                         if (!pattern.includes(dayTarget) && !pattern.includes('daily')) {
                             keep = false;
-                            rejectionReason = `Incorrect day (Pattern: ${detail.recurring_pattern}, Target: ${dayOfWeek})`;
+                            // console.log(`   ⛔ Filtered out "${r.title}": Wrong day`);
                         }
-                    }
-
-                    if (!keep) {
-                        console.log(`   ⛔ Filtered out "${r.title}": ${rejectionReason}`);
                     }
                     return keep;
                 });
             }
         }
+
+
 
         console.log(`🚀 [AI Search] Final Results: ${results.length} items`);
 

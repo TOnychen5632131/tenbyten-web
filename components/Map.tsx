@@ -17,7 +17,9 @@ const LocationController = () => {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const { latitude, longitude } = position.coords;
-                    map.flyTo([latitude, longitude], 13);
+                    if (map) {
+                        map.flyTo([latitude, longitude], 13);
+                    }
                 },
                 (error) => {
                     console.error("Error getting location: ", error);

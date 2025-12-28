@@ -13,8 +13,8 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
         title: '',
         description: '',
         address: '',
-        start_date: '',
-        end_date: '',
+        season_start_date: '',
+        season_end_date: '',
         start_time: '',
         end_time: '',
         is_indoors: false,
@@ -23,7 +23,9 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
         application_deadline: '',
         vendor_count: '',
         admission_fee: '',
-        website: ''
+        website: '',
+        tags: '',
+        categories: ''
     });
 
     useEffect(() => {
@@ -32,17 +34,22 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                 title: initialData.title || '',
                 description: initialData.description || '',
                 address: initialData.address || '',
-                start_date: initialData.start_date || '',
-                end_date: initialData.end_date || '',
-                start_time: initialData.start_time || '',
-                end_time: initialData.end_time || '',
+                // Use season dates if available, fallback to legacy start/end or empty
+                season_start_date: initialData.season_start_date || initialData.start_date || '',
+                season_end_date: initialData.season_end_date || initialData.end_date || '',
+                // Ensure time is in HH:MM format for input[type="time"]
+                start_time: initialData.start_time ? initialData.start_time.slice(0, 5) : '',
+                end_time: initialData.end_time ? initialData.end_time.slice(0, 5) : '',
                 is_indoors: initialData.is_indoors || false,
                 electricity_access: initialData.electricity_access || false,
                 booth_size: initialData.booth_size || '',
                 application_deadline: initialData.application_deadline || '',
                 vendor_count: initialData.vendor_count || '',
                 admission_fee: initialData.admission_fee || '',
-                website: initialData.website || ''
+                website: initialData.website || '',
+                // Join arrays for string editing
+                tags: initialData.tags ? initialData.tags.join(', ') : '',
+                categories: initialData.categories ? initialData.categories.join(', ') : ''
             });
         }
     }, [initialData]);
@@ -55,7 +62,10 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
             const body = {
                 type: 'MARKET',
                 ...formData,
-                id: initialData?.id // Include ID for updates
+                id: initialData?.id, // Include ID for updates
+                // Split strings back to arrays
+                tags: formData.tags.split(',').map(s => s.trim()).filter(Boolean),
+                categories: formData.categories.split(',').map(s => s.trim()).filter(Boolean)
             };
 
             const res = await fetch('/api/opportunities', {
@@ -119,12 +129,12 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                        <label className="block text-[10px] uppercase text-white/40 mb-1">Start Date</label>
-                        <input type="date" name="start_date" value={formData.start_date} required onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" />
+                        <label className="block text-[10px] uppercase text-white/40 mb-1">Season Start</label>
+                        <input type="date" name="season_start_date" value={formData.season_start_date} onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" />
                     </div>
                     <div>
-                        <label className="block text-[10px] uppercase text-white/40 mb-1">End Date</label>
-                        <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" />
+                        <label className="block text-[10px] uppercase text-white/40 mb-1">Season End</label>
+                        <input type="date" name="season_end_date" value={formData.season_end_date} onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" />
                     </div>
                     <div>
                         <label className="block text-[10px] uppercase text-white/40 mb-1">Open Time</label>
@@ -140,7 +150,7 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
             {/* Logistics */}
             <div className="p-6 bg-white/5 rounded-2xl border border-white/5">
                 <h3 className="text-sm font-bold text-white mb-4">Logistics</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                     <div className="flex items-center gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
                         <input type="checkbox" name="is_indoors" checked={formData.is_indoors} onChange={handleChange} className="w-4 h-4 rounded text-blue-500" />
                         <span className="text-sm text-white/80">Indoors?</span>
@@ -157,6 +167,17 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                     </div>
                     <div>
                         <input name="vendor_count" value={formData.vendor_count} onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" placeholder="Vendor Count" />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-[10px] uppercase text-white/40 mb-1">Tags / Food Access</label>
+                        <input name="tags" value={formData.tags} onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" placeholder="e.g. WIC, SNAP, Organic (comma separated)" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] uppercase text-white/40 mb-1">Categories / Market Day</label>
+                        <input name="categories" value={formData.categories} onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" placeholder="e.g. Saturday, Produce, Crafts" />
                     </div>
                 </div>
             </div>

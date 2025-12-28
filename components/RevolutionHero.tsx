@@ -2,13 +2,32 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, X, Mic, Camera, ArrowLeft, ArrowRight } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import AuthModal from './AuthModal';
 import SegmentedNav from './SegmentedNav';
 import MapContainer from './MapContainer';
 import OpportunityDetail from './OpportunityDetail';
+import PublicListView from './PublicListView';
 
 const RevolutionHero = () => {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState('search');
+    const { user, loading } = useAuth(); // Import useAuth
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // Local state if we want to trigger modal from here, or we can just block activeTab change
+
+    // Intercept tab change
+    const handleTabChange = (tab: string) => {
+        if ((tab === 'map' || tab === 'list') && !user) {
+            // If trying to access protected tabs without auth
+            alert("Please login to access Map and List views."); // Simple alert for now, or trigger header modal if possible.
+            // Ideally we would open the global auth modal. 
+            // Since Header has the modal, we might need a global state or event. 
+            // For now, let's just create a local AuthModal instance here or use a simple alert.
+            setIsAuthModalOpen(true);
+            return;
+        }
+        setActiveTab(tab);
+    };
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -118,9 +137,12 @@ const RevolutionHero = () => {
             {/* Navigation Wrapper - Absolute to avoid flex centering */}
             {!selectedResult && (
                 <div className="absolute top-0 left-0 right-0 z-[100]">
-                    <SegmentedNav activeTab={activeTab} onTabChange={setActiveTab} />
+                    <SegmentedNav activeTab={activeTab} onTabChange={handleTabChange} />
                 </div>
             )}
+
+            {/* Render AuthModal if needed locally, although Header has one too. Only one should be open. */}
+            <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 
             {/* SEARCH VIEW */}
             {activeTab === 'search' && (
@@ -144,19 +166,24 @@ const RevolutionHero = () => {
                     <div className={`relative z-10 w-full px-4 md:px-6 flex flex-col items-center transition-all duration-500 ${results.length > 0 ? 'pt-44 justify-start h-full' : 'justify-center h-full'}`}>
                         {/* Title - fades out when searching to make room */}
                         {results.length === 0 && !isSearching && (
-                            <h1
-                                onClick={() => {
-                                    const newCount = titleClickCount + 1;
-                                    setTitleClickCount(newCount);
-                                    if (newCount >= 10) {
-                                        router.push('/admin-login');
-                                        setTitleClickCount(0);
-                                    }
-                                }}
-                                className="text-[13vw] md:text-9xl font-bold text-white mb-6 tracking-tighter drop-shadow-2xl text-center select-none font-sans leading-tight animate-scale-up cursor-pointer"
-                            >
-                                Tenbyten
-                            </h1>
+                            <div className="flex flex-col items-center">
+                                <h1
+                                    onClick={() => {
+                                        const newCount = titleClickCount + 1;
+                                        setTitleClickCount(newCount);
+                                        if (newCount >= 10) {
+                                            router.push('/admin-login');
+                                            setTitleClickCount(0);
+                                        }
+                                    }}
+                                    className="text-[13vw] md:text-9xl font-bold text-white mb-2 tracking-tighter drop-shadow-2xl text-center select-none font-sans leading-tight animate-scale-up cursor-pointer"
+                                >
+                                    Tenbyten
+                                </h1>
+                                <p className="text-white/70 text-sm md:text-lg font-medium tracking-wide text-center font-sans mb-6">
+                                    Find your next market
+                                </p>
+                            </div>
                         )}
 
                         {/* Search Bar Container - Transitions from Center to Top */}
@@ -280,13 +307,7 @@ const RevolutionHero = () => {
                             </div>
                         )}
 
-                        {/* Detail Modal Integration */}
-                        {selectedResult && (
-                            <OpportunityDetail
-                                data={selectedResult}
-                                onClose={() => setSelectedResult(null)}
-                            />
-                        )}
+
 
                         {/* Buttons (Hidden when searching) */}
                         {results.length === 0 && !isSearching && (
@@ -303,7 +324,7 @@ const RevolutionHero = () => {
 
                     {/* Footer Text */}
                     <div className="absolute bottom-6 md:bottom-6 text-white/40 text-[10px] md:text-[10px] text-center px-6 w-full uppercase tracking-widest font-medium leading-relaxed">
-                        www.tenbyten.com rights reserved by tenbyten
+                        tenbyten.vercel.app rights reserved by tenbyten
                     </div>
                 </>
             )}
@@ -313,6 +334,21 @@ const RevolutionHero = () => {
                 <div className="absolute inset-0 z-[40] bg-black animate-fade-in">
                     <MapContainer />
                 </div>
+            )}
+
+            {/* LIST VIEW (Google Style) */}
+            {activeTab === 'list' && (
+                <div className="absolute inset-0 z-[40] bg-[#202124] animate-fade-in overflow-y-auto">
+                    <PublicListView onSelect={setSelectedResult} />
+                </div>
+            )}
+
+            {/* Detail Modal Integration - Global Overlay */}
+            {selectedResult && (
+                <OpportunityDetail
+                    data={selectedResult}
+                    onClose={() => setSelectedResult(null)}
+                />
             )}
         </div>
     );

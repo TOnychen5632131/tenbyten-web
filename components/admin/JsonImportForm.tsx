@@ -17,8 +17,13 @@ const JsonImportForm = () => {
             let parsedData;
             try {
                 parsedData = JSON.parse(jsonInput);
+                // Handle both direct array and { items: [...] } wrapper
                 if (!Array.isArray(parsedData)) {
-                    throw new Error('Input must be an array of objects.');
+                    if (typeof parsedData === 'object' && parsedData !== null && Array.isArray((parsedData as any).items)) {
+                        parsedData = (parsedData as any).items;
+                    } else {
+                        throw new Error('Input must be an array of objects or an object with an "items" array.');
+                    }
                 }
             } catch (e) {
                 setError('Invalid JSON format. Please ensure it is a valid JSON array.');

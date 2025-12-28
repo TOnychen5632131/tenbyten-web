@@ -1,26 +1,69 @@
 import { supabase } from '@/utils/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
+// Helper to normalize dates (MM/DD/YYYY -> YYYY-MM-DD)
+const normalizeDate = (dateStr: string | null | undefined): string | null => {
+    if (!dateStr) return null;
+    // Check if already in YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
+    // Handle MM/DD/YYYY
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+        // Assume MM/DD/YYYY
+        return `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+    }
+    return dateStr; // Return original if unknown format
+};
+
+// Helper to normalize time (9:00 AM -> 09:00:00)
+// Can handle: "10:00 AM", "Wed, Sat 08:00 AM", "Thursday-Sunday 10:00 AM", "14:00"
+// Returns null for "Sunset" or invalid formats
+const normalizeTime = (timeStr: string | null | undefined): string | null => {
+    if (!timeStr) return null;
+
+    // 1. Try to find a time pattern: HH:MM followed optionally by :SS and AM/PM
+    // Matches: "10:00", "10:00 AM", "10:00:00", " 9:00pm "
+    const timeRegex = /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/i;
+    const match = timeStr.match(timeRegex);
+
+    if (!match) {
+        // Handle special cases like "Sunset" strictly if needed, or just return null
+        return null;
+    }
+
+    let [_, hoursStr, minutesStr, secondsStr, modifier] = match;
+
+    let hours = parseInt(hoursStr);
+    const minutes = minutesStr; // Already padded or 2 digits from regex
+    const seconds = secondsStr || '00';
+
+    if (modifier) {
+        modifier = modifier.toLowerCase();
+        const isPM = modifier.includes('pm') || modifier.includes('p.m.');
+        const isAM = modifier.includes('am') || modifier.includes('a.m.');
+
+        if (isPM && hours < 12) hours += 12;
+        if (isAM && hours === 12) hours = 0;
+    }
+
+    return `${hours.toString().padStart(2, '0')}:${minutes}:${seconds}`;
+};
+
 export async function POST(request: NextRequest) {
     // Uses the imported supabase instance directly
 
-    // Check authentication (simple admin check)
-    // In a real app, this should be more robust (e.g., middleware or session check)
-    // For now, we assume the frontend sends the request and we check if the user is authenticated in Supabase logic if needed,
-    // but since we are using specific admin logic, let's just proceed. 
-    // NOTE: The previous admin page used localStorage 'isAdmin', which is client-side only. 
-    // For this server endpoint, anyone could hit it if we don't protect it.
-    // Given the current simple architecture (localStorage admin), we might not have a server-side session.
-    // We will proceed without strict server-side auth for now, as per the existing pattern, 
-    // but arguably we should at least check for a secret header or similar if the user had set that up.
-    // Since they didn't, we'll focus on the logic.
-
     try {
-        const data = await request.json();
+        let data = await request.json();
+
+        // Handle wrapper object { items: [...] }
+        if (!Array.isArray(data) && data.items && Array.isArray(data.items)) {
+            data = data.items;
+        }
 
         if (!Array.isArray(data)) {
             return NextResponse.json(
-                { error: 'Input must be a JSON array' },
+                { error: 'Input must be a JSON array or { items: [] }' },
                 { status: 400 }
             );
         }
@@ -46,8 +89,6 @@ export async function POST(request: NextRequest) {
             }
 
             // 2. Deduplication Check
-            // Check if an opportunity with the same title and type exists
-            // We could also check address/location for stricter deduplication
             const { data: existing } = await supabase
                 .from('sales_opportunities')
                 .select('id')
@@ -69,13 +110,12 @@ export async function POST(request: NextRequest) {
                 const categoriesStr = market_details?.categories ? market_details.categories.join(' ') : '';
                 const textToEmbed = `${title} ${description} ${type} ${tagsStr} ${categoriesStr}`;
 
-                // We'll import this function from utils/openai
-                // Ensure to import { generateEmbedding } from '@/utils/openai'; at the top
-                const { generateEmbedding } = require('@/utils/openai');
+                // Generate embedding using OpenAI
+                const { generateEmbedding } = await import('@/utils/openai');
                 embedding = await generateEmbedding(textToEmbed);
+
             } catch (embedError) {
                 console.warn(`Failed to generate embedding for ${title}:`, embedError);
-                // We continue even if embedding fails, but warn
             }
 
             // 4. Insert into sales_opportunities
@@ -83,7 +123,7 @@ export async function POST(request: NextRequest) {
                 .from('sales_opportunities')
                 .insert({
                     type, title, description, address, latitude, longitude, images, tags,
-                    embedding // Add embedding here
+                    embedding
                 })
                 .select('id')
                 .single();
@@ -109,10 +149,13 @@ export async function POST(request: NextRequest) {
                     .from('market_details')
                     .insert({
                         opportunity_id: oppId,
-                        start_time, end_time, is_recurring, recurring_pattern,
+                        start_time: normalizeTime(start_time),
+                        end_time: normalizeTime(end_time),
+                        is_recurring, recurring_pattern,
                         organizer_name, admission_fee, is_indoors, electricity_access, booth_size,
                         categories, weather_policy, application_link,
-                        season_start_date, season_end_date
+                        season_start_date: normalizeDate(season_start_date),
+                        season_end_date: normalizeDate(season_end_date)
                     });
 
                 if (mktError) {

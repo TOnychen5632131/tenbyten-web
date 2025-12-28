@@ -3,9 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/utils/supabase';
 
 // GET: Fetch all or specific opportunity
+// GET: Fetch all or specific opportunity
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
+
+    // Pagination & Search params
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const query = searchParams.get('q') || '';
+    const type = searchParams.get('type') || 'ALL';
 
     try {
         if (id) {
@@ -30,15 +37,69 @@ export async function GET(req: NextRequest) {
 
             return NextResponse.json({ ...opp, ...details });
         } else {
-            // Fetch list
-            const { data, error } = await supabase
+            // Calculate range
+            const from = (page - 1) * limit;
+            const to = from + limit - 1;
+
+            // Build query
+            let supabaseQuery = supabase
                 .from('sales_opportunities')
-                .select('*')
-                .order('created_at', { ascending: false });
+                .select('*', { count: 'exact' }); // Request count for pagination
+
+            // Apply Type Filter
+            if (type !== 'ALL') {
+                supabaseQuery = supabaseQuery.eq('type', type);
+            }
+
+            // Apply Search Filter (Title or Address)
+            if (query) {
+                // Using 'or' for simple multi-column search
+                supabaseQuery = supabaseQuery.or(`title.ilike.%${query}%,address.ilike.%${query}%`);
+            }
+
+            // Apply Pagination & Ordering
+            const { data: opportunities, count, error } = await supabaseQuery
+                .order('created_at', { ascending: false })
+                .range(from, to);
 
             if (error) throw error;
 
-            return NextResponse.json(data);
+            if (opportunities && opportunities.length > 0) {
+                const ids = opportunities.map(o => o.id);
+
+                // Fetch Details for the current page items
+                const { data: markets } = await supabase.from('market_details').select('*').in('opportunity_id', ids);
+                const { data: consignments } = await supabase.from('consignment_details').select('*').in('opportunity_id', ids);
+
+                const detailsMap = new Map();
+                if (markets) markets.forEach(m => detailsMap.set(m.opportunity_id, m));
+                if (consignments) consignments.forEach(c => detailsMap.set(c.opportunity_id, c));
+
+                const mergedData = opportunities.map(opp => {
+                    const detail = detailsMap.get(opp.id);
+                    return detail ? { ...opp, ...detail } : opp;
+                });
+
+                return NextResponse.json({
+                    data: mergedData,
+                    meta: {
+                        total: count,
+                        page,
+                        limit,
+                        totalPages: Math.ceil((count || 0) / limit)
+                    }
+                });
+            }
+
+            return NextResponse.json({
+                data: [],
+                meta: {
+                    total: count || 0,
+                    page,
+                    limit,
+                    totalPages: 0
+                }
+            });
         }
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -87,7 +148,7 @@ export async function PUT(req: NextRequest) {
                 title: data.title,
                 description: data.description,
                 address: data.address,
-                tags: [] // defaulting for now or keep existing? Ideally handle tags
+                tags: data.tags || []
             })
             .eq('id', id);
 
@@ -99,15 +160,21 @@ export async function PUT(req: NextRequest) {
             const { error } = await supabase
                 .from('market_details')
                 .update({
+                    // Update seasonal dates
+                    season_start_date: data.season_start_date || data.start_date || null,
+                    season_end_date: data.season_end_date || data.end_date || null,
+                    // Keep start/end date for compatibility if needed, or just standard fields
                     start_date: data.start_date || null,
                     end_date: data.end_date || null,
+
                     start_time: data.start_time || null,
                     end_time: data.end_time || null,
                     is_indoors: data.is_indoors,
                     electricity_access: data.electricity_access,
                     booth_size: data.booth_size,
                     vendor_count: parseInt(data.vendor_count) || null,
-                    admission_fee: data.admission_fee
+                    admission_fee: data.admission_fee,
+                    categories: data.categories || [] // Update categories
                 })
                 .eq('opportunity_id', id);
             detailError = error;

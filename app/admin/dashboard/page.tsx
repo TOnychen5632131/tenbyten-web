@@ -7,6 +7,7 @@ import MarketForm from '@/components/admin/MarketForm';
 import ConsignmentForm from '@/components/admin/ConsignmentForm';
 import JsonImportForm from '@/components/admin/JsonImportForm';
 import OpportunityList from '@/components/admin/OpportunityList';
+import AdminDrawer from '@/components/admin/AdminDrawer';
 
 // Tabs
 const TABS = {
@@ -20,6 +21,7 @@ const AdminDashboard = () => {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState(TABS.MANAGE);
     const [editingItem, setEditingItem] = useState<any>(null);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
     // Simple auth check
     useEffect(() => {
@@ -36,13 +38,25 @@ const AdminDashboard = () => {
 
     const handleEdit = (item: any) => {
         setEditingItem(item);
-        if (item.type === 'MARKET') setActiveTab(TABS.MARKET);
-        else if (item.type === 'CONSIGNMENT') setActiveTab(TABS.CONSIGNMENT);
+        setIsDrawerOpen(true);
     };
 
     const handleSuccess = () => {
         setEditingItem(null);
-        setActiveTab(TABS.MANAGE);
+        setIsDrawerOpen(false);
+        // Force refresh logic could be added here if OpportunityList listened to a context or event
+        // For now, the user can manually refresh or we can add a refresh trigger prop
+        window.location.reload(); // Simple reload to reflect changes
+    };
+
+    const handleNewMarket = () => {
+        setEditingItem(null); // Clear editing item implies "New"
+        setActiveTab(TABS.MARKET);
+    };
+
+    const handleNewShop = () => {
+        setEditingItem(null);
+        setActiveTab(TABS.CONSIGNMENT);
     };
 
     // Clear editing state if user manually switches tabs (optional, but good UX)
@@ -54,104 +68,122 @@ const AdminDashboard = () => {
     return (
         <div className="min-h-screen bg-black text-white p-4 md:p-8">
             {/* Header */}
-            <div className="max-w-4xl mx-auto flex items-center justify-between mb-8">
+            <div className="max-w-[1400px] mx-auto flex items-center justify-between mb-8">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
                     <p className="text-white/50">Manage Sales Opportunities</p>
                 </div>
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-sm font-medium transition-colors border border-white/10"
-                >
-                    <LogOut size={16} />
-                    Logout
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={handleNewMarket}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-sm font-bold transition-colors shadow-lg shadow-blue-900/20"
+                    >
+                        <Plus size={16} />
+                        New Market
+                    </button>
+                    <button
+                        onClick={handleNewShop}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-sm font-bold transition-colors shadow-lg shadow-emerald-900/20"
+                    >
+                        <Plus size={16} />
+                        New Shop
+                    </button>
+                    <div className="h-8 w-[1px] bg-white/10 mx-2" />
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-sm font-medium transition-colors border border-white/10"
+                    >
+                        <LogOut size={16} />
+                        Logout
+                    </button>
+                </div>
             </div>
 
             {/* Main Content Area */}
-            <div className="max-w-4xl mx-auto">
-                {/* Tabs */}
-                <div className="flex gap-4 mb-6 overflow-x-auto pb-2 md:pb-0">
+            <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-[250px_1fr] gap-8">
+                {/* Sidebar Navigation (Tabs replacement) */}
+                <div className="flex flex-col gap-2">
                     <button
                         onClick={() => handleTabChange(TABS.MANAGE)}
-                        className={`flex-1 min-w-[120px] py-4 rounded-2xl flex flex-col items-center justify-center gap-2 border transition-all ${activeTab === TABS.MANAGE
-                            ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-900/40'
-                            : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                        className={`text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === TABS.MANAGE
+                            ? 'bg-white/10 text-white font-bold border border-white/10'
+                            : 'text-white/50 hover:bg-white/5 hover:text-white'
                             }`}
                     >
-                        <LayoutList size={24} />
-                        <span className="font-bold tracking-wide text-xs md:text-sm">MANAGE</span>
+                        <LayoutList size={20} />
+                        Manage Listings
                     </button>
                     <button
                         onClick={() => handleTabChange(TABS.MARKET)}
-                        className={`flex-1 min-w-[120px] py-4 rounded-2xl flex flex-col items-center justify-center gap-2 border transition-all ${activeTab === TABS.MARKET
-                            ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-900/40'
-                            : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                        className={`text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === TABS.MARKET
+                            ? 'bg-white/10 text-white font-bold border border-white/10'
+                            : 'text-white/50 hover:bg-white/5 hover:text-white'
                             }`}
                     >
-                        <Store size={24} />
-                        <span className="font-bold tracking-wide text-xs md:text-sm">{editingItem?.type === 'MARKET' ? 'EDIT MARKET' : 'ADD MARKET'}</span>
+                        <Store size={20} />
+                        Add Market
                     </button>
                     <button
                         onClick={() => handleTabChange(TABS.CONSIGNMENT)}
-                        className={`flex-1 min-w-[120px] py-4 rounded-2xl flex flex-col items-center justify-center gap-2 border transition-all ${activeTab === TABS.CONSIGNMENT
-                            ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg shadow-emerald-900/40'
-                            : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                        className={`text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === TABS.CONSIGNMENT
+                            ? 'bg-white/10 text-white font-bold border border-white/10'
+                            : 'text-white/50 hover:bg-white/5 hover:text-white'
                             }`}
                     >
-                        <ShoppingBag size={24} />
-                        <span className="font-bold tracking-wide text-xs md:text-sm">{editingItem?.type === 'CONSIGNMENT' ? 'EDIT SHOP' : 'ADD SHOP'}</span>
+                        <ShoppingBag size={20} />
+                        Add Shop
                     </button>
                     <button
                         onClick={() => handleTabChange(TABS.IMPORT)}
-                        className={`flex-1 min-w-[120px] py-4 rounded-2xl flex flex-col items-center justify-center gap-2 border transition-all ${activeTab === TABS.IMPORT
-                            ? 'bg-violet-600 border-violet-400 text-white shadow-lg shadow-violet-900/40'
-                            : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                        className={`text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === TABS.IMPORT
+                            ? 'bg-white/10 text-white font-bold border border-white/10'
+                            : 'text-white/50 hover:bg-white/5 hover:text-white'
                             }`}
                     >
-                        <Upload size={24} />
-                        <span className="font-bold tracking-wide text-xs md:text-sm">IMPORT</span>
+                        <Upload size={20} />
+                        Import Data
                     </button>
                 </div>
 
-                {/* Form Container */}
-                <div className="bg-[#111] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
-                    <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none transition-colors duration-500
-                        ${activeTab === TABS.MARKET ? 'bg-indigo-500/10' :
-                            activeTab === TABS.CONSIGNMENT ? 'bg-emerald-500/10' :
-                                activeTab === TABS.MANAGE ? 'bg-blue-500/10' : 'bg-violet-500/10'}`}
+                {/* Content Panel */}
+                <div className="bg-[#111] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden min-h-[600px]">
+                    {/* Dynamic Background */}
+                    <div className={`absolute top-0 right-0 w-96 h-96 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none transition-colors duration-500 opacity-20
+                        ${activeTab === TABS.MARKET ? 'bg-blue-500' :
+                            activeTab === TABS.CONSIGNMENT ? 'bg-emerald-500' :
+                                activeTab === TABS.MANAGE ? 'bg-white' : 'bg-violet-500'}`}
                     />
 
                     {activeTab === TABS.MANAGE && (
-                        <div className="animate-fade-in">
+                        <div className="animate-fade-in relative z-10">
                             <OpportunityList onEdit={handleEdit} />
                         </div>
                     )}
 
                     {activeTab === TABS.MARKET && (
-                        <div className="animate-fade-in">
-                            <h2 className="text-xl font-bold mb-6 text-indigo-400 flex items-center gap-2">
-                                <Plus size={20} />
-                                {editingItem ? 'Edit Market Listing' : 'New Market Listing'}
+                        <div className="animate-fade-in relative z-10 max-w-2xl mx-auto">
+                            <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
+                                <Plus size={24} className="text-blue-500" />
+                                Create New Market
                             </h2>
-                            <MarketForm initialData={editingItem} onSuccess={handleSuccess} />
+                            <MarketForm initialData={null} onSuccess={() => setActiveTab(TABS.MANAGE)} />
                         </div>
                     )}
 
                     {activeTab === TABS.CONSIGNMENT && (
-                        <div className="animate-fade-in">
-                            <h2 className="text-xl font-bold mb-6 text-emerald-400 flex items-center gap-2">
-                                <Plus size={20} />
-                                {editingItem ? 'Edit Shop Listing' : 'New Shop Listing'}
+                        <div className="animate-fade-in relative z-10 max-w-2xl mx-auto">
+                            <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
+                                <Plus size={24} className="text-emerald-500" />
+                                Create New Consignment Shop
                             </h2>
-                            <ConsignmentForm initialData={editingItem} onSuccess={handleSuccess} />
+                            <ConsignmentForm initialData={null} onSuccess={() => setActiveTab(TABS.MANAGE)} />
                         </div>
                     )}
 
                     {activeTab === TABS.IMPORT && (
-                        <div className="animate-fade-in">
-                            <h2 className="text-xl font-bold mb-6 text-violet-400 flex items-center gap-2">
-                                <FileJson size={20} />
+                        <div className="animate-fade-in relative z-10 max-w-2xl mx-auto">
+                            <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
+                                <FileJson size={24} className="text-violet-500" />
                                 Bulk Data Import
                             </h2>
                             <JsonImportForm />
@@ -159,6 +191,20 @@ const AdminDashboard = () => {
                     )}
                 </div>
             </div>
+
+            {/* Side Drawer for Editing */}
+            <AdminDrawer
+                isOpen={isDrawerOpen}
+                onClose={() => setIsDrawerOpen(false)}
+                title={editingItem ? `Edit ${editingItem.title}` : 'Edit Listing'}
+            >
+                {editingItem && editingItem.type === 'MARKET' && (
+                    <MarketForm initialData={editingItem} onSuccess={handleSuccess} />
+                )}
+                {editingItem && editingItem.type === 'CONSIGNMENT' && (
+                    <ConsignmentForm initialData={editingItem} onSuccess={handleSuccess} />
+                )}
+            </AdminDrawer>
         </div>
     );
 };
