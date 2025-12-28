@@ -8,9 +8,14 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const opportunity_id = searchParams.get('opportunity_id');
     const force = searchParams.get('force') === '1' || searchParams.get('force') === 'true';
+    const debug = searchParams.get('debug') === '1' || searchParams.get('debug') === 'true';
+    const debugInfo: Record<string, any> = {
+        opportunity_id,
+        force
+    };
 
     if (!opportunity_id) {
-        return NextResponse.json({ error: 'Opportunity ID required' }, { status: 400 });
+        return NextResponse.json({ error: 'Opportunity ID required', ...(debug ? { debug: debugInfo } : {}) }, { status: 400 });
     }
 
     try {
@@ -26,23 +31,27 @@ export async function GET(req: NextRequest) {
         }
 
         const cached = cachedReviews || [];
+        debugInfo.cache_count = cached.length;
 
         // If we have reviews in DB, return them (Cache Hit)
         if (!force && cached.length > 0) {
             return NextResponse.json({
                 source: 'CACHE',
-                reviews: cached
+                reviews: cached,
+                ...(debug ? { debug: debugInfo } : {})
             });
         }
 
         // 2. If Cache Miss, we need to fetch from Google
         if (!GOOGLE_API_KEY) {
             console.error("Missing Google API Key");
+            debugInfo.google_api_key_present = false;
             if (cached.length > 0) {
-                return NextResponse.json({ source: 'CACHE', reviews: cached });
+                return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
             }
-            return NextResponse.json({ source: 'NONE', reviews: [] });
+            return NextResponse.json({ source: 'NONE', reviews: [], ...(debug ? { debug: debugInfo } : {}) });
         }
+        debugInfo.google_api_key_present = true;
 
         // 2a. Get the Opportunity details to know what to search for
         const { data: opportunity } = await supabase
@@ -52,21 +61,62 @@ export async function GET(req: NextRequest) {
             .single();
 
         if (!opportunity) {
-            return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
+            return NextResponse.json({ error: 'Opportunity not found', ...(debug ? { debug: debugInfo } : {}) }, { status: 404 });
         }
+
+        debugInfo.opportunity = {
+            title: opportunity.title,
+            address: opportunity.address,
+            google_place_id: opportunity.google_place_id
+        };
 
         let placeId = opportunity.google_place_id;
 
         // 2b. If we don't have a place_id yet, Search for it
         if (!placeId) {
-            const query = `${opportunity.title} ${opportunity.address}`;
+            const query = [opportunity.title, opportunity.address].filter(Boolean).join(' ').trim();
+            debugInfo.search_query = query;
+
+            if (!query) {
+                if (cached.length > 0) {
+                    return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
+                }
+                return NextResponse.json({ source: 'GOOGLE_ZERO', reviews: [], ...(debug ? { debug: debugInfo } : {}) });
+            }
+
             const searchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${GOOGLE_API_KEY}`;
 
             const searchRes = await fetch(searchUrl);
             const searchData = await searchRes.json();
+            debugInfo.search_status = searchData?.status;
+            debugInfo.search_error_message = searchData?.error_message;
+            debugInfo.search_result_count = searchData?.results?.length || 0;
+
+            if (!searchRes.ok) {
+                console.warn("Google search HTTP error:", searchRes.status, searchRes.statusText);
+            }
+            if (searchData?.status && searchData.status !== 'OK') {
+                console.warn("Google search status:", searchData.status, searchData.error_message || '');
+                if (searchData.status === 'ZERO_RESULTS') {
+                    if (cached.length > 0) {
+                        return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
+                    }
+                    return NextResponse.json({ source: 'GOOGLE_ZERO', reviews: [], ...(debug ? { debug: debugInfo } : {}) });
+                }
+                return NextResponse.json(
+                    {
+                        source: 'GOOGLE_SEARCH_ERROR',
+                        reviews: [],
+                        error: searchData?.error_message || `Google search error: ${searchData.status}`,
+                        ...(debug ? { debug: debugInfo } : {})
+                    },
+                    { status: 502 }
+                );
+            }
 
             if (searchData.results && searchData.results.length > 0) {
                 placeId = searchData.results[0].place_id;
+                debugInfo.place_id = placeId;
 
                 // Save this Place ID so we don't search again
                 await supabase
@@ -79,24 +129,51 @@ export async function GET(req: NextRequest) {
         if (!placeId) {
             // Found nothing on Google
             if (cached.length > 0) {
-                return NextResponse.json({ source: 'CACHE', reviews: cached });
+                return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
             }
-            return NextResponse.json({ source: 'GOOGLE_ZERO', reviews: [] });
+            return NextResponse.json({ source: 'GOOGLE_ZERO', reviews: [], ...(debug ? { debug: debugInfo } : {}) });
         }
 
         // 3. Fetch Reviews using Place Details API
         const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=reviews,rating,user_ratings_total&key=${GOOGLE_API_KEY}`;
         const detailsRes = await fetch(detailsUrl);
         const detailsData = await detailsRes.json();
+        debugInfo.details_status = detailsData?.status;
+        debugInfo.details_error_message = detailsData?.error_message;
+
+        if (!detailsRes.ok) {
+            console.warn("Google details HTTP error:", detailsRes.status, detailsRes.statusText);
+        }
+        if (detailsData?.status && detailsData.status !== 'OK') {
+            console.warn("Google details status:", detailsData.status, detailsData.error_message || '');
+            if (detailsData.status === 'ZERO_RESULTS') {
+                if (cached.length > 0) {
+                    return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
+                }
+                return NextResponse.json({ source: 'GOOGLE_ZERO', reviews: [], ...(debug ? { debug: debugInfo } : {}) });
+            }
+            return NextResponse.json(
+                {
+                    source: 'GOOGLE_DETAILS_ERROR',
+                    reviews: [],
+                    error: detailsData?.error_message || `Google details error: ${detailsData.status}`,
+                    ...(debug ? { debug: debugInfo } : {})
+                },
+                { status: 502 }
+            );
+        }
 
         if (!detailsData?.result) {
             if (cached.length > 0) {
-                return NextResponse.json({ source: 'CACHE', reviews: cached });
+                return NextResponse.json({ source: 'CACHE', reviews: cached, ...(debug ? { debug: debugInfo } : {}) });
             }
-            return NextResponse.json({ source: 'GOOGLE_ERROR', reviews: [] });
+            return NextResponse.json({ source: 'GOOGLE_ERROR', reviews: [], ...(debug ? { debug: debugInfo } : {}) });
         }
 
         const googleReviews = detailsData.result?.reviews || [];
+        debugInfo.details_review_count = googleReviews.length;
+        debugInfo.details_rating = detailsData.result?.rating;
+        debugInfo.details_user_ratings_total = detailsData.result?.user_ratings_total;
 
         if (force && cached.length > 0) {
             const { error: deleteError } = await supabase
@@ -134,11 +211,12 @@ export async function GET(req: NextRequest) {
                 rating: r.rating,
                 text: r.text,
                 original_date: r.relative_time_description
-            }))
+            })),
+            ...(debug ? { debug: debugInfo } : {})
         });
 
     } catch (error: any) {
         console.error("Review fetch error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error.message, ...(debug ? { debug: debugInfo } : {}) }, { status: 500 });
     }
 }

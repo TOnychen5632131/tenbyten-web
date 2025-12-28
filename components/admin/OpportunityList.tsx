@@ -126,13 +126,17 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
 
         setRefreshingId(item.id);
         try {
-            const res = await fetch(`/api/reviews?opportunity_id=${item.id}&force=1`);
+            const res = await fetch(`/api/reviews?opportunity_id=${item.id}&force=1&debug=1`);
             const data = await res.json();
             if (!res.ok || data?.error) {
                 throw new Error(data?.error || 'Failed to refresh reviews');
             }
             const count = Array.isArray(data?.reviews) ? data.reviews.length : 0;
-            alert(`Reviews updated (${count} found).`);
+            const source = data?.source ? ` Source: ${data.source}.` : '';
+            alert(`Reviews updated (${count} found).${source}`);
+            if (data?.debug) {
+                console.info('Review refresh debug:', data.debug);
+            }
         } catch (error) {
             console.error('Failed to refresh reviews:', error);
             alert('Failed to refresh reviews. Check console for details.');

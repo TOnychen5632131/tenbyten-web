@@ -94,15 +94,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'l
             if (authError) throw authError;
 
             if (authData.user) {
-                // 3. Mark invite code as used
-                await supabase
-                    .from('invite_codes')
-                    .update({ is_used: true })
-                    .eq('code', inviteCode);
+                if (authData.session) {
+                    // 3. Mark invite code as used
+                    await supabase
+                        .from('invite_codes')
+                        .update({ is_used: true })
+                        .eq('code', inviteCode);
 
-                // 4. Redirect to onboarding
-                router.push('/onboarding');
-                onClose();
+                    // 4. Redirect to onboarding
+                    router.push('/onboarding');
+                    onClose();
+                } else {
+                    // Email confirmation required
+                    alert('Registration successful! Please check your email to confirm your account before logging in.');
+                    setView('login');
+                }
             }
 
         } catch (err: any) {
