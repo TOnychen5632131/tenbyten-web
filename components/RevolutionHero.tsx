@@ -445,7 +445,7 @@ const RevolutionHero = () => {
                                     Trending Markets
                                 </button>
                                 <a href="https://heretoday.vercel.app/" className="px-6 py-3 md:py-2.5 rounded-full border border-white/60 bg-white/10 text-white text-sm md:text-base font-medium hover:bg-white/20 active:bg-white/30 transition-all backdrop-blur-sm whitespace-nowrap active:scale-95 shadow-lg flex items-center justify-center">
-                                    Digital Card
+                                    Free Business Card
                                 </a>
                             </div>
                         )}

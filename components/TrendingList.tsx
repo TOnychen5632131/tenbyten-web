@@ -101,6 +101,22 @@ const TrendingItem = ({ item, index, onSelect }: { item: any, index: number, onS
 const TrendingList = ({ onSelect, onBack }: TrendingListProps) => {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingStage, setLoadingStage] = useState(0);
+    const loadingMessages = [
+        "SCANNING GLOBAL TRENDS...",
+        "ANALYZING SOCIAL SIGNALS...",
+        "RANKING OPPORTUNITIES...",
+        "CALIBRATING HEATMAP..."
+    ];
+
+    useEffect(() => {
+        if (loading) {
+            const interval = setInterval(() => {
+                setLoadingStage(prev => (prev + 1) % loadingMessages.length);
+            }, 750);
+            return () => clearInterval(interval);
+        }
+    }, [loading]);
 
     useEffect(() => {
         // Fetch opportunities
@@ -120,6 +136,34 @@ const TrendingList = ({ onSelect, onBack }: TrendingListProps) => {
         };
         fetchTrending();
     }, []);
+
+    if (loading) {
+        return (
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black">
+                <div className="relative">
+                    {/* Pulsing Core */}
+                    <div className="w-24 h-24 rounded-full bg-orange-500/20 animate-pulse flex items-center justify-center shadow-[0_0_50px_rgba(249,115,22,0.3)]">
+                        <div className="w-16 h-16 rounded-full bg-orange-400/20 flex items-center justify-center animate-spin-slow">
+                            <Flame className="text-orange-500 animate-pulse" size={32} />
+                        </div>
+                    </div>
+                    {/* Scanning Circles */}
+                    <div className="absolute inset-0 w-24 h-24 rounded-full border border-orange-500/30 animate-ping opacity-20" />
+                </div>
+
+                <div className="mt-8 text-center space-y-2">
+                    <div className="text-orange-400 font-mono text-xs tracking-[0.2em] animate-pulse">
+                        {loadingMessages[loadingStage]}
+                    </div>
+                    <div className="flex gap-1 justify-center mt-2">
+                        {[0, 1, 2].map((i) => (
+                            <div key={i} className="w-1 h-1 bg-orange-500/50 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.1}s` }} />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full min-h-full bg-black text-white pt-40 pb-10 px-4 md:px-0">
