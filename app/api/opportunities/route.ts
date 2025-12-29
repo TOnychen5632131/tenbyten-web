@@ -395,14 +395,19 @@ export async function PUT(req: NextRequest) {
                     end_time: data.end_time || null,
                     is_indoors: data.is_indoors,
                     electricity_access: data.electricity_access,
-                    booth_size: data.booth_size,
+                    booth_size: data.booth_size || null,
                     vendor_count: parseInt(data.vendor_count) || null,
-                    admission_fee: data.admission_fee,
+                    admission_fee: data.admission_fee || null,
                     application_link: data.website || null,
                     organizer_name: data.organizer_name || null,
                     categories: data.categories || [], // Update categories
                     is_recurring: data.is_recurring,
-                    recurring_pattern: data.recurring_pattern
+                    recurring_pattern: data.recurring_pattern,
+
+                    // New Fields
+                    application_start_date: data.application_start_date || null,
+                    application_end_date: data.application_end_date || null,
+                    additional_schedules: data.additional_schedules || []
                 })
                 .eq('opportunity_id', id);
             detailError = error;
@@ -412,7 +417,7 @@ export async function PUT(req: NextRequest) {
                 .update({
                     accepted_items: data.accepted_items,
                     excluded_brands: data.excluded_brands,
-                    consignment_split: data.consignment_split,
+                    consignment_split: data.consignment_split || null,
                     contract_duration_days: parseInt(data.contract_duration_days) || null,
                     intake_hours: data.intake_hours
                 })
@@ -465,7 +470,7 @@ export async function POST(req: NextRequest) {
                 latitude: manualCoords?.latitude ?? geocodeResult?.latitude ?? null,
                 longitude: manualCoords?.longitude ?? geocodeResult?.longitude ?? null,
                 google_place_id: geocodeResult?.placeId ?? null,
-                tags: [], // defaulting for now
+                tags: data.tags || [],
                 is_trending: data.is_trending || false
             })
             .select('id')
@@ -492,15 +497,20 @@ export async function POST(req: NextRequest) {
                     end_time: data.end_time || null,
                     is_indoors: data.is_indoors,
                     electricity_access: data.electricity_access,
-                    booth_size: data.booth_size,
+                    booth_size: data.booth_size || null,
                     vendor_count: parseInt(data.vendor_count) || null,
-                    admission_fee: data.admission_fee,
+                    admission_fee: data.admission_fee || null,
                     application_link: data.website || null,
                     organizer_name: data.organizer_name || null,
-                    tags: data.tags || [],
+
                     categories: data.categories || [],
                     is_recurring: data.is_recurring || false,
-                    recurring_pattern: data.recurring_pattern || null
+                    recurring_pattern: data.recurring_pattern || null,
+
+                    // New Fields
+                    application_start_date: data.application_start_date || null,
+                    application_end_date: data.application_end_date || null,
+                    additional_schedules: data.additional_schedules || []
                 });
             detailError = error;
         } else if (type === 'CONSIGNMENT') {
@@ -510,7 +520,7 @@ export async function POST(req: NextRequest) {
                     opportunity_id: opportunityId,
                     accepted_items: data.accepted_items,
                     excluded_brands: data.excluded_brands,
-                    consignment_split: data.consignment_split,
+                    consignment_split: data.consignment_split || null,
                     contract_duration_days: parseInt(data.contract_duration_days) || null,
                     intake_hours: data.intake_hours,
                     open_days: [] // Default empty or parse from input if we added that UI

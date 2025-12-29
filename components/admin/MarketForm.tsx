@@ -6,6 +6,15 @@ interface MarketFormProps {
     onSuccess?: () => void;
 }
 
+type ScheduleSegment = {
+    label: string;
+    start_date: string;
+    end_date: string;
+    start_time: string;
+    end_time: string;
+    days: string[];
+};
+
 const formatCoordinate = (value: any) => {
     if (value === null || value === undefined) return '';
     const num = Number(value);
@@ -13,7 +22,47 @@ const formatCoordinate = (value: any) => {
     return String(value);
 };
 
+const QuickSuggestion = ({ values, onSelect, className = "" }: { values: string[], onSelect: (val: string) => void, className?: string }) => {
+    if (!values || values.length === 0) return null;
+    return (
+        <div className={`flex flex-wrap gap-2 mt-2 ${className}`}>
+            {values.map((val) => (
+                <button
+                    key={val}
+                    type="button"
+                    onClick={() => onSelect(val)}
+                    className="text-[10px] px-2 py-0.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-full text-white/50 transition-colors"
+                >
+                    {val}
+                </button>
+            ))}
+        </div>
+    );
+};
+
 const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
+    const [suggestions, setSuggestions] = useState({
+        organizer_name: [] as string[],
+        booth_size: [] as string[],
+        start_time: [] as string[],
+        end_time: [] as string[]
+    });
+
+    useEffect(() => {
+        const fetchSuggestions = async () => {
+            try {
+                const res = await fetch('/api/admin/suggestions');
+                if (res.ok) {
+                    const data = await res.json();
+                    setSuggestions(data);
+                }
+            } catch (err) {
+                console.error('Failed to load suggestions', err);
+            }
+        };
+        fetchSuggestions();
+    }, []);
+
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
@@ -25,6 +74,9 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
         season_end_date: '2026-12-31',
         start_time: '',
         end_time: '',
+        application_start_date: '',
+        application_end_date: '',
+        additional_schedules: [] as ScheduleSegment[],
         is_indoors: false,
         electricity_access: false,
         booth_size: '',
@@ -56,6 +108,12 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                 // Ensure time is in HH:MM format for input[type="time"]
                 start_time: initialData.start_time ? initialData.start_time.slice(0, 5) : '',
                 end_time: initialData.end_time ? initialData.end_time.slice(0, 5) : '',
+                // Application Period
+                application_start_date: initialData.application_start_date || '',
+                application_end_date: initialData.application_end_date || '',
+                // Complex Schedule
+                additional_schedules: (initialData.additional_schedules || []) as ScheduleSegment[],
+
                 is_indoors: initialData.is_indoors || false,
                 electricity_access: initialData.electricity_access || false,
                 booth_size: initialData.booth_size || '',
@@ -189,6 +247,7 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                     <div className="relative">
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
                         <input name="organizer_name" value={formData.organizer_name} onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-4 pl-12 text-white focus:border-blue-500 outline-none transition-colors" placeholder="e.g. Seattle Farmers Market Association" />
+                        <QuickSuggestion values={suggestions.organizer_name} onSelect={(val) => setFormData(prev => ({ ...prev, organizer_name: val }))} />
                     </div>
                 </div>
 
@@ -235,7 +294,7 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                     <Calendar size={16} className="text-blue-400" />
                     Date & Time
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div>
                         <label className="block text-[10px] uppercase text-white/40 mb-1">Season Start</label>
                         <input type="date" name="season_start_date" value={formData.season_start_date} onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" />
@@ -247,10 +306,12 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                     <div>
                         <label className="block text-[10px] uppercase text-white/40 mb-1">Open Time</label>
                         <input type="time" name="start_time" value={formData.start_time} onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" />
+                        <QuickSuggestion values={suggestions.start_time} onSelect={(val) => setFormData(prev => ({ ...prev, start_time: val }))} />
                     </div>
                     <div>
                         <label className="block text-[10px] uppercase text-white/40 mb-1">Close Time</label>
                         <input type="time" name="end_time" value={formData.end_time} onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" />
+                        <QuickSuggestion values={suggestions.end_time} onSelect={(val) => setFormData(prev => ({ ...prev, end_time: val }))} />
                     </div>
                 </div>
 
@@ -337,6 +398,105 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                         </div>
                     )}
                 </div>
+                {/* Advanced Schedule Config */}
+                <div className="mt-8 border-t border-white/10 pt-6">
+                    <h4 className="text-sm font-bold text-white mb-4">Advanced Schedule (Exceptions / Seasonal Hours)</h4>
+
+                    {formData.additional_schedules.map((schedule, idx) => (
+                        <div key={idx} className="bg-black/20 p-4 rounded-xl mb-4 border border-white/5 relative">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const newSchedules = [...formData.additional_schedules];
+                                    newSchedules.splice(idx, 1);
+                                    setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                }}
+                                className="absolute top-2 right-2 text-white/20 hover:text-red-500"
+                            >
+                                Remove
+                            </button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+                                <input
+                                    placeholder="Label (e.g. Peak Season)"
+                                    value={schedule.label}
+                                    onChange={(e) => {
+                                        const newSchedules = [...formData.additional_schedules];
+                                        newSchedules[idx].label = e.target.value;
+                                        setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                    }}
+                                    className="bg-transparent border-b border-white/10 text-white text-sm w-full py-1 outline-none focus:border-blue-500"
+                                />
+                                <div className="flex gap-2">
+                                    <input
+                                        type="date"
+                                        value={schedule.start_date}
+                                        onChange={(e) => {
+                                            const newSchedules = [...formData.additional_schedules];
+                                            newSchedules[idx].start_date = e.target.value;
+                                            setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                        }}
+                                        className="bg-black/30 text-white text-xs p-1 rounded border border-white/10"
+                                    />
+                                    <span className="text-white/30 self-center">-</span>
+                                    <input
+                                        type="date"
+                                        value={schedule.end_date}
+                                        onChange={(e) => {
+                                            const newSchedules = [...formData.additional_schedules];
+                                            newSchedules[idx].end_date = e.target.value;
+                                            setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                        }}
+                                        className="bg-black/30 text-white text-xs p-1 rounded border border-white/10"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <span className="text-[10px] text-white/40 uppercase">Hours:</span>
+                                <input type="time" value={schedule.start_time} onChange={(e) => {
+                                    const newSchedules = [...formData.additional_schedules];
+                                    newSchedules[idx].start_time = e.target.value;
+                                    setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                }} className="bg-black/30 text-white text-xs p-1 rounded border border-white/10" />
+                                <span className="text-white/30">-</span>
+                                <input type="time" value={schedule.end_time} onChange={(e) => {
+                                    const newSchedules = [...formData.additional_schedules];
+                                    newSchedules[idx].end_time = e.target.value;
+                                    setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                }} className="bg-black/30 text-white text-xs p-1 rounded border border-white/10" />
+                            </div>
+                            <div className="mt-2">
+                                <span className="text-[10px] text-white/40 uppercase mr-2">Day:</span>
+                                {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
+                                    <button
+                                        key={day}
+                                        type="button"
+                                        onClick={() => {
+                                            const newSchedules = [...formData.additional_schedules];
+                                            const currentDays = newSchedules[idx].days || [];
+                                            if (currentDays.includes(day)) newSchedules[idx].days = currentDays.filter(d => d !== day);
+                                            else newSchedules[idx].days = [...currentDays, day];
+                                            setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                        }}
+                                        className={`px-2 py-0.5 mr-1 rounded text-[10px] border ${schedule.days && schedule.days.includes(day) ? 'bg-blue-500 border-blue-500 text-white' : 'bg-transparent border-white/10 text-white/40'}`}
+                                    >
+                                        {day.slice(0, 3)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+
+                    <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({
+                            ...prev,
+                            additional_schedules: [...prev.additional_schedules, { label: 'New Season', start_date: '', end_date: '', start_time: '', end_time: '', days: [] }]
+                        }))}
+                        className="text-xs text-blue-400 hover:text-blue-300 font-bold border border-blue-400/30 px-3 py-2 rounded-lg"
+                    >
+                        + Add Schedule Segment
+                    </button>
+                </div>
             </div>
 
             {/* Logistics */}
@@ -353,6 +513,7 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                     </div>
                     <div>
                         <input name="booth_size" value={formData.booth_size} onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" placeholder="Booth Size (e.g. 10x10)" />
+                        <QuickSuggestion values={suggestions.booth_size} onSelect={(val) => setFormData(prev => ({ ...prev, booth_size: val }))} />
                     </div>
                     <div>
                         <input name="admission_fee" value={formData.admission_fee} onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" placeholder="Admission Fee ($)" />
@@ -375,6 +536,21 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                         />
                     </div>
                     <p className="text-[10px] text-white/30 mt-1 pl-1">* If set, "Apply for Booth" will link here. Otherwise, it searches Google.</p>
+                </div>
+
+                {/* Application Period */}
+                <div className="mb-4">
+                    <label className="block text-xs uppercase tracking-wider text-white/50 mb-2">Vendor Application Window (Optional)</label>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <span className="block text-[10px] text-white/40 mb-1">Opens</span>
+                            <input type="date" name="application_start_date" value={formData.application_start_date} onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" />
+                        </div>
+                        <div>
+                            <span className="block text-[10px] text-white/40 mb-1">Closes</span>
+                            <input type="date" name="application_end_date" value={formData.application_end_date} onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Trending / Featured Toggle */}
@@ -433,6 +609,8 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                         <input name="categories" value={formData.categories} onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" placeholder="e.g. Saturday, Produce, Crafts" />
                     </div>
                 </div>
+
+
             </div>
 
             <button
@@ -442,7 +620,7 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
             >
                 {loading ? 'Saving...' : (initialData ? 'Update Market' : 'Create Market Opportunity')}
             </button>
-        </form>
+        </form >
     );
 };
 

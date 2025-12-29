@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { X, Calendar, MapPin, ExternalLink, User, Users, ChevronLeft, ShieldCheck, Star, MessageSquare } from 'lucide-react';
+import { X, Calendar, MapPin, ExternalLink, User, Users, ChevronLeft, ShieldCheck, Star, MessageSquare, Clock } from 'lucide-react';
 
 interface OpportunityDetailProps {
     data: any;
@@ -158,7 +158,7 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                                 {stats.rating ? (
                                     <div className="text-center leading-none">
                                         <span className="block text-black font-bold text-lg">{stats.rating.toFixed(1)}</span>
-                                        <span className="block text-black/40 text-[10px] font-medium leading-none mt-0.5">{stats.count > 1000 ? (stats.count / 1000).toFixed(1) + 'k' : stats.count}</span>
+                                        <span className="block text-black/40 text-[10px] font-medium leading-none mt-0.5">{(stats.count || 0) > 1000 ? ((stats.count || 0) / 1000).toFixed(1) + 'k' : (stats.count || 0)}</span>
                                     </div>
                                 ) : (
                                     <div className="text-center leading-none">
@@ -205,6 +205,30 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Advanced Schedule (Seasonal / Exceptions) */}
+                        {data.additional_schedules && data.additional_schedules.length > 0 && (
+                            <div className="mb-6 bg-white/5 border border-white/10 rounded-2xl p-4 animate-fade-in-up delay-100">
+                                <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                                    <Clock size={16} className="text-orange-400" />
+                                    Seasonal Hours & Exceptions
+                                </h3>
+                                <div className="space-y-3">
+                                    {data.additional_schedules.map((schedule: any, idx: number) => (
+                                        <div key={idx} className="text-sm border-l-2 border-white/10 pl-3">
+                                            {schedule.label && <div className="font-bold text-white/90">{schedule.label}</div>}
+                                            <div className="text-white/60 text-xs mt-1">
+                                                {schedule.start_date ? new Date(schedule.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
+                                                {schedule.end_date ? ` - ${new Date(schedule.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                                            </div>
+                                            <div className="text-white/60 text-xs">
+                                                {schedule.days?.join(', ')} • {schedule.start_time} - {schedule.end_time}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Reviews Section */}
                         <div className="mb-10">
@@ -333,6 +357,17 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                                         <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-white/50 text-xs">
                                             <Users size={14} />
                                             <span>Approx. {data.vendor_count} Vendors</span>
+                                        </div>
+                                    )}
+
+                                    {(data.application_start_date || data.application_end_date) && (
+                                        <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-white/50 text-xs">
+                                            <Calendar size={14} className="text-emerald-400" />
+                                            <span>
+                                                App Window: {data.application_start_date ? new Date(data.application_start_date + 'T00:00:00').toLocaleDateString() : 'Now'}
+                                                {' - '}
+                                                {data.application_end_date ? new Date(data.application_end_date + 'T00:00:00').toLocaleDateString() : 'Until Full'}
+                                            </span>
                                         </div>
                                     )}
                                 </div>
