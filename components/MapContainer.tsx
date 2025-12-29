@@ -125,7 +125,7 @@ const MapContainer = () => {
         const pageSize = 200;
 
         const fetchPage = async (page: number) => {
-            const res = await fetch(`/api/opportunities?page=${page}&limit=${pageSize}`);
+            const res = await fetch(`/api/opportunities?page=${page}&limit=${pageSize}&year=2026`);
             if (!res.ok) {
                 throw new Error(`Failed to load opportunities (${res.status})`);
             }

@@ -145,7 +145,6 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                         {/* Header: Title & Counter */}
                         <div className="flex justify-between items-start mb-6 pt-2">
                             <div className="flex-1 pr-4">
-                                {/* In reference, there is a square image on left, but we can do text if no image */}
                                 <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight tracking-tight">
                                     {data.title}
                                 </h2>
@@ -205,6 +204,23 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Vendor Application Window - High Priority */}
+                        {(data.application_start_date || data.application_end_date) && (
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 mb-4 flex items-center gap-3 animate-pulse-slow">
+                                <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                                    <Calendar size={20} className="text-emerald-400" />
+                                </div>
+                                <div>
+                                    <div className="text-emerald-400 text-xs font-bold uppercase tracking-wider mb-0.5">Vendor Application Window</div>
+                                    <div className="text-emerald-100 text-sm font-medium">
+                                        {data.application_start_date ? new Date(data.application_start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Now'}
+                                        {' - '}
+                                        {data.application_end_date ? new Date(data.application_end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Until Full'}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Advanced Schedule (Seasonal / Exceptions) */}
                         {data.additional_schedules && data.additional_schedules.length > 0 && (
@@ -281,9 +297,7 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
 
                         {/* Location Card */}
                         <div className="bg-white/5 border border-white/10 rounded-3xl p-2 flex gap-3 mb-6">
-                            {/* Mini Map Preview */}
                             <div className="w-24 h-24 rounded-2xl bg-gray-700 relative overflow-hidden shrink-0">
-                                {/* Mock Map Image Style */}
                                 <div className="absolute inset-0 opacity-50 bg-[url('https://api.mapbox.com/styles/v1/mapbox/dark-v10/static/0,0,10,0/300x300?access_token=pk.eyJ1IjoidGVhY2hlcmZ1bmciLCJhIjoiY2x0ZzJzN29vMDBtNDJrbzB5dG9uYTN2biJ9.awC8u4b-fI4q4lY-w9J4Ig')] bg-cover bg-center"></div>
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <MapPin size={24} className="text-white drop-shadow-md" fill="currentColor" />
@@ -301,9 +315,9 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                                 >
                                     <ExternalLink size={12} />
                                     Get Direction
-                                </a >
-                            </div >
-                        </div >
+                                </a>
+                            </div>
+                        </div>
 
                         {/* Hosted By */}
                         <div className="space-y-3 mb-8">
@@ -332,7 +346,6 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                         {
                             (data.tags?.length > 0 || data.categories?.length > 0) && (
                                 <div className="mb-24 bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 relative overflow-hidden group">
-                                    {/* Decorative Background Gradient */}
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
                                     <div className="flex items-center gap-2 mb-4">
@@ -357,17 +370,6 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                                         <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-white/50 text-xs">
                                             <Users size={14} />
                                             <span>Approx. {data.vendor_count} Vendors</span>
-                                        </div>
-                                    )}
-
-                                    {(data.application_start_date || data.application_end_date) && (
-                                        <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-white/50 text-xs">
-                                            <Calendar size={14} className="text-emerald-400" />
-                                            <span>
-                                                App Window: {data.application_start_date ? new Date(data.application_start_date + 'T00:00:00').toLocaleDateString() : 'Now'}
-                                                {' - '}
-                                                {data.application_end_date ? new Date(data.application_end_date + 'T00:00:00').toLocaleDateString() : 'Until Full'}
-                                            </span>
                                         </div>
                                     )}
                                 </div>

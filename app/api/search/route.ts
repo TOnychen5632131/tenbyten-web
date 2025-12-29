@@ -30,6 +30,46 @@ const VENDOR_TYPE_ALIASES = new Map<string, string>([
 ]);
 
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+type ApplicationFilterMode = 'START' | 'END' | 'WINDOW';
+type ApplicationFilter = {
+    mode: ApplicationFilterMode;
+    rangeStart: Date;
+    rangeEnd: Date;
+};
+
+const APPLICATION_KEYWORDS_REGEX = /申请|报名|招募|征集|报摊|application|apply|registration|register/i;
+const APPLICATION_START_KEYWORDS_REGEX = /开始|开放|开启|open|opens|opening|start|starts/i;
+const APPLICATION_END_KEYWORDS_REGEX = /截止|结束|关闭|close|closes|closing|deadline|截至|最后/i;
+
+const MONTH_NAME_TO_INDEX: Record<string, number> = {
+    jan: 0,
+    feb: 1,
+    mar: 2,
+    apr: 3,
+    may: 4,
+    jun: 5,
+    jul: 6,
+    aug: 7,
+    sep: 8,
+    oct: 9,
+    nov: 10,
+    dec: 11
+};
+const MONTH_NAME_REGEX = /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i;
+const CHINESE_MONTHS: Array<[string, number]> = [
+    ['十二月', 11],
+    ['十一月', 10],
+    ['十月', 9],
+    ['九月', 8],
+    ['八月', 7],
+    ['七月', 6],
+    ['六月', 5],
+    ['五月', 4],
+    ['四月', 3],
+    ['三月', 2],
+    ['二月', 1],
+    ['一月', 0]
+];
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DEFAULT_RADIUS_KM = 50;
 const MAX_RADIUS_KM = 200;
@@ -55,6 +95,15 @@ const normalizeVendorType = (value: string) => {
         || null;
 };
 
+const normalizeApplicationDateFilter = (value: unknown): ApplicationFilterMode | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim().toUpperCase();
+    if (normalized === 'START' || normalized === 'END' || normalized === 'WINDOW') {
+        return normalized as ApplicationFilterMode;
+    }
+    return null;
+};
+
 const toArray = (value: unknown) => {
     if (!value) return [];
     return Array.isArray(value) ? value : [value];
@@ -75,6 +124,62 @@ const parseDate = (value?: string | null) => {
 
 const toDateOnly = (date: Date) => new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+const hasApplicationKeywords = (text: string) => APPLICATION_KEYWORDS_REGEX.test(text);
+
+const inferApplicationFilterModeFromText = (text: string): ApplicationFilterMode | null => {
+    if (!hasApplicationKeywords(text)) return null;
+    if (APPLICATION_START_KEYWORDS_REGEX.test(text)) return 'START';
+    if (APPLICATION_END_KEYWORDS_REGEX.test(text)) return 'END';
+    return 'WINDOW';
+};
+
+const getYearFromText = (text: string) => {
+    const match = text.match(/(20\d{2})\s*年?/);
+    if (match) return Number(match[1]);
+    return null;
+};
+
+const getMonthIndexFromText = (text: string) => {
+    const numericMatch = text.match(/(?:^|[^0-9])([1-9]|1[0-2])\s*月/);
+    if (numericMatch) return Number(numericMatch[1]) - 1;
+
+    const lower = text.toLowerCase();
+    const nameMatch = lower.match(MONTH_NAME_REGEX);
+    if (nameMatch) {
+        const key = nameMatch[1].slice(0, 3);
+        if (Object.prototype.hasOwnProperty.call(MONTH_NAME_TO_INDEX, key)) {
+            return MONTH_NAME_TO_INDEX[key];
+        }
+    }
+
+    for (const [label, index] of CHINESE_MONTHS) {
+        if (text.includes(label)) return index;
+    }
+
+    return null;
+};
+
+const resolveYearForMonth = (monthIndex: number, explicitYear: number | null) => {
+    if (explicitYear) return explicitYear;
+    const today = new Date();
+    const currentYear = today.getUTCFullYear();
+    const currentMonth = today.getUTCMonth();
+    return monthIndex < currentMonth ? currentYear + 1 : currentYear;
+};
+
+const buildMonthRange = (monthIndex: number, year: number) => {
+    const start = new Date(Date.UTC(year, monthIndex, 1));
+    const end = new Date(Date.UTC(year, monthIndex + 1, 0));
+    return { start, end };
+};
+
+const inferMonthDateRangeFromText = (text: string) => {
+    const monthIndex = getMonthIndexFromText(text);
+    if (monthIndex === null) return null;
+    const year = resolveYearForMonth(monthIndex, getYearFromText(text));
+    return buildMonthRange(monthIndex, year);
+};
 
 const toNumber = (value: unknown) => {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -196,6 +301,12 @@ const inferDateRangeFromText = (text: string) => {
     return null;
 };
 
+const inferApplicationDateRangeFromText = (text: string) => {
+    const monthRange = inferMonthDateRangeFromText(text);
+    if (monthRange) return monthRange;
+    return inferDateRangeFromText(text);
+};
+
 const inferIntentTypeFromText = (text: string) => {
     if (/consignment|resale|thrift|second\s*hand|寄卖|二手店|二手商店/i.test(text)) {
         return 'CONSIGNMENT';
@@ -228,6 +339,8 @@ const buildHeuristicInterpretation = (text: string) => {
     const dateRange = inferDateRangeFromText(text);
     const dayOfWeek = inferDayOfWeekFromText(text);
     const intentType = inferIntentTypeFromText(text);
+    const applicationDateFilter = inferApplicationFilterModeFromText(text);
+    const applicationDateRange = applicationDateFilter ? inferApplicationDateRangeFromText(text) : null;
     return {
         keywords: text,
         vendorTypes,
@@ -239,6 +352,13 @@ const buildHeuristicInterpretation = (text: string) => {
                 endDate: formatDate(dateRange.end)
             }
             : null,
+        applicationDateRange: applicationDateRange
+            ? {
+                startDate: formatDate(applicationDateRange.start),
+                endDate: formatDate(applicationDateRange.end)
+            }
+            : null,
+        applicationDateFilter,
         dayOfWeek,
         location: null
     };
@@ -273,6 +393,58 @@ const buildSearchableText = (record: any) => {
     if (Array.isArray(record?.tags)) parts.push(record.tags.join(' '));
     if (Array.isArray(record?.categories)) parts.push(record.categories.join(' '));
     return parts.filter(Boolean).join(' ');
+};
+
+const buildApplicationFilter = (
+    applicationDateRange: { startDate?: string | null; endDate?: string | null } | null,
+    applicationDateFilter: ApplicationFilterMode | null
+) => {
+    if (!applicationDateRange) return null;
+
+    let rangeStart = parseDate(applicationDateRange.startDate ?? undefined);
+    let rangeEnd = parseDate(applicationDateRange.endDate ?? undefined);
+
+    if (rangeStart && !rangeEnd) rangeEnd = rangeStart;
+    if (!rangeStart && rangeEnd) rangeStart = rangeEnd;
+    if (!rangeStart || !rangeEnd) return null;
+
+    if (rangeStart > rangeEnd) {
+        const temp = rangeStart;
+        rangeStart = rangeEnd;
+        rangeEnd = temp;
+    }
+
+    return {
+        mode: applicationDateFilter || 'WINDOW',
+        rangeStart,
+        rangeEnd
+    };
+};
+
+const applyApplicationFilter = (records: any[], filter: ApplicationFilter | null) => {
+    if (!filter) return records;
+    const { mode, rangeStart, rangeEnd } = filter;
+
+    return records.filter((record) => {
+        const recordType = typeof record?.type === 'string' ? record.type : null;
+        if (recordType && recordType !== 'MARKET') return false;
+
+        const start = parseDate(record?.application_start_date);
+        const end = parseDate(record?.application_end_date);
+
+        if (mode === 'START') {
+            return Boolean(start) && start >= rangeStart && start <= rangeEnd;
+        }
+
+        if (mode === 'END') {
+            return Boolean(end) && end >= rangeStart && end <= rangeEnd;
+        }
+
+        const resolvedStart = start || end;
+        const resolvedEnd = end || start;
+        if (!resolvedStart || !resolvedEnd) return false;
+        return rangeOverlaps(rangeStart, rangeEnd, resolvedStart, resolvedEnd);
+    });
 };
 
 const FALLBACK_MAX_RESULTS = 50;
@@ -525,6 +697,8 @@ Output JSON with:
 - vendorTypeMentioned: boolean (true only if the user describes what they sell or their vendor category)
 - intentType: "MARKET" | "CONSIGNMENT" | "ANY"
 - dateRange: { startDate: "YYYY-MM-DD", endDate: "YYYY-MM-DD" } or nulls
+- applicationDateRange: { startDate: "YYYY-MM-DD", endDate: "YYYY-MM-DD" } or nulls (only for application/registration timing)
+- applicationDateFilter: "START" | "END" | "WINDOW" or null
 - dayOfWeek: string (Full English Name, e.g. "Sunday") ONLY if the user explicitly mentions a specific day of the week.
 - location: string if mentioned, else null.
 
@@ -546,6 +720,11 @@ Rules:
 - If no vendor type is clearly present, return vendorTypes: []
 - If the user describes what they sell or their vendor category, vendorTypeMentioned must be true (even if vendorTypes is empty).
 - If user says "market/市集/Market", intentType = "MARKET"; if "consignment/寄卖/二手店", intentType = "CONSIGNMENT"; otherwise "ANY".
+- If the user asks about application/registration (apply/申请/报名/招募), use applicationDateRange and applicationDateFilter:
+  - "START" if they ask when applications start/open.
+  - "END" if they ask about deadlines/closing.
+  - "WINDOW" for general application period queries.
+- If an application query mentions a month (e.g. "2月", "February"), set applicationDateRange to that month and avoid putting it into dateRange unless they explicitly ask about market/event dates.
 - "next week/下周" => dateRange is next Monday to next Sunday relative to today.
 - "weekend/周末" => dateRange is the upcoming Saturday to Sunday relative to today.
 Today is ${new Date().toISOString().split('T')[0]}.`
@@ -569,6 +748,11 @@ Today is ${new Date().toISOString().split('T')[0]}.`
         const interpretationHasDateRange = Boolean(
             interpretation?.dateRange && (interpretation.dateRange.startDate || interpretation.dateRange.endDate)
         );
+        const interpretationHasApplicationDateRange = Boolean(
+            interpretation?.applicationDateRange
+            && (interpretation.applicationDateRange.startDate || interpretation.applicationDateRange.endDate)
+        );
+        const normalizedApplicationDateFilter = normalizeApplicationDateFilter(interpretation?.applicationDateFilter);
         interpretation = {
             keywords: typeof interpretation.keywords === 'string' && interpretation.keywords.trim()
                 ? interpretation.keywords
@@ -585,6 +769,10 @@ Today is ${new Date().toISOString().split('T')[0]}.`
             dateRange: interpretationHasDateRange
                 ? interpretation.dateRange
                 : heuristicInterpretation.dateRange,
+            applicationDateRange: interpretationHasApplicationDateRange
+                ? interpretation.applicationDateRange
+                : heuristicInterpretation.applicationDateRange,
+            applicationDateFilter: normalizedApplicationDateFilter ?? heuristicInterpretation.applicationDateFilter,
             dayOfWeek: typeof interpretation.dayOfWeek === 'string'
                 ? interpretation.dayOfWeek
                 : heuristicInterpretation.dayOfWeek,
@@ -631,10 +819,14 @@ Today is ${new Date().toISOString().split('T')[0]}.`
 
         const location = typeof interpretation.location === 'string' ? interpretation.location : null;
         const dateRange = interpretation.dateRange || {};
+        const applicationMentioned = hasApplicationKeywords(query) || Boolean(interpretation.applicationDateRange);
+        const shouldUseDateRangeForApplication = applicationMentioned
+            && !interpretation.applicationDateRange
+            && (dateRange.startDate || dateRange.endDate);
         let rangeStart = parseDate(dateRange.startDate) || parseDate(interpretation.targetDate);
         let rangeEnd = parseDate(dateRange.endDate) || parseDate(interpretation.targetDate);
 
-        if (!rangeStart || !rangeEnd) {
+        if (!shouldUseDateRangeForApplication && (!rangeStart || !rangeEnd)) {
             const inferredRange = inferDateRangeFromText(query);
             if (inferredRange) {
                 rangeStart = rangeStart || inferredRange.start;
@@ -649,6 +841,19 @@ Today is ${new Date().toISOString().split('T')[0]}.`
             rangeStart = rangeEnd;
             rangeEnd = temp;
         }
+
+        if (shouldUseDateRangeForApplication) {
+            rangeStart = null;
+            rangeEnd = null;
+        }
+
+        const applicationDateRange = shouldUseDateRangeForApplication
+            ? dateRange
+            : interpretation.applicationDateRange;
+        const applicationDateFilter = normalizeApplicationDateFilter(interpretation.applicationDateFilter);
+        const applicationFilter = applicationMentioned
+            ? buildApplicationFilter(applicationDateRange, applicationDateFilter)
+            : null;
 
         // 2. Generate Embedding for the Keywords (or full query if no keywords)
         const textToEmbed = keywords
@@ -786,6 +991,10 @@ Today is ${new Date().toISOString().split('T')[0]}.`
             }
         }
 
+        if (applicationFilter) {
+            results = applyApplicationFilter(results, applicationFilter);
+        }
+
         if (results.length === 0) {
             const fallbackResults: any[] = [];
 
@@ -818,6 +1027,9 @@ Today is ${new Date().toISOString().split('T')[0]}.`
                     if (item?.id) deduped.set(item.id, item);
                 });
                 results = Array.from(deduped.values());
+                if (applicationFilter) {
+                    results = applyApplicationFilter(results, applicationFilter);
+                }
             }
         }
 
@@ -841,7 +1053,14 @@ Today is ${new Date().toISOString().split('T')[0]}.`
                         startDate: rangeStart.toISOString().split('T')[0],
                         endDate: rangeEnd.toISOString().split('T')[0]
                     }
-                    : interpretation.dateRange
+                    : interpretation.dateRange,
+                applicationDateRange: applicationFilter
+                    ? {
+                        startDate: formatDate(applicationFilter.rangeStart),
+                        endDate: formatDate(applicationFilter.rangeEnd)
+                    }
+                    : interpretation.applicationDateRange,
+                applicationDateFilter: applicationFilter?.mode ?? interpretation.applicationDateFilter
             }
         });
 
