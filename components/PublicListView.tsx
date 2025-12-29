@@ -394,9 +394,16 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                 )}
 
                 {/* Footer */}
-                <div className="mt-16 text-center">
+                <div className="mt-16 text-center relative z-10 pointer-events-auto">
                     <div className="text-white/20 text-[10px] uppercase tracking-[0.2em]">
-                        TENBYTEN.VERCEL.APP RIGHTS RESERVED BY TENBYTEN
+                        <span>TENBYTEN.VERCEL.APP</span>
+                        <span className="mx-2">/</span>
+                        <a
+                            href="/about"
+                            className="text-white/40 underline decoration-white/20 underline-offset-4 hover:text-white/70 hover:decoration-white/60 transition-colors"
+                        >
+                            About & Partnerships
+                        </a>
                     </div>
                 </div>
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Store, ShoppingBag, LogOut, Upload, FileJson, LayoutList, User, Database } from 'lucide-react';
+import { Plus, Store, ShoppingBag, LogOut, Upload, FileJson, LayoutList, User, Database, Mail } from 'lucide-react';
 import MarketForm from '@/components/admin/MarketForm';
 import ConsignmentForm from '@/components/admin/ConsignmentForm';
 import JsonImportForm from '@/components/admin/JsonImportForm';
@@ -10,6 +10,7 @@ import OpportunityList from '@/components/admin/OpportunityList';
 import UserList from '@/components/admin/UserList';
 import AdminDrawer from '@/components/admin/AdminDrawer';
 import VendorProfileForm from '@/components/admin/VendorProfileForm';
+import PartnershipList from '@/components/admin/PartnershipList';
 
 // Tabs
 const TABS = {
@@ -17,7 +18,8 @@ const TABS = {
     MARKET: 'MARKET',
     CONSIGNMENT: 'CONSIGNMENT',
     IMPORT: 'IMPORT',
-    USERS: 'USERS'
+    USERS: 'USERS',
+    PARTNERSHIPS: 'PARTNERSHIPS'
 };
 
 const AdminDashboard = () => {
@@ -156,6 +158,16 @@ const AdminDashboard = () => {
                         <User size={20} />
                         Manage Users
                     </button>
+                    <button
+                        onClick={() => handleTabChange(TABS.PARTNERSHIPS)}
+                        className={`text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === TABS.PARTNERSHIPS
+                            ? 'bg-white/10 text-white font-bold border border-white/10'
+                            : 'text-white/50 hover:bg-white/5 hover:text-white'
+                            }`}
+                    >
+                        <Mail size={20} />
+                        Partnerships
+                    </button>
 
                     <div className="h-[1px] bg-white/10 my-2 mx-4" />
 
@@ -176,7 +188,8 @@ const AdminDashboard = () => {
                         ${activeTab === TABS.MARKET ? 'bg-blue-500' :
                             activeTab === TABS.CONSIGNMENT ? 'bg-emerald-500' :
                                 activeTab === TABS.USERS ? 'bg-pink-500' :
-                                    activeTab === TABS.MANAGE ? 'bg-white' : 'bg-violet-500'}`}
+                                    activeTab === TABS.PARTNERSHIPS ? 'bg-amber-500' :
+                                        activeTab === TABS.MANAGE ? 'bg-white' : 'bg-violet-500'}`}
                     />
 
                     {activeTab === TABS.MANAGE && (
@@ -218,6 +231,12 @@ const AdminDashboard = () => {
                     {activeTab === TABS.USERS && (
                         <div className="animate-fade-in relative z-10">
                             <UserList onEdit={handleEdit} />
+                        </div>
+                    )}
+
+                    {activeTab === TABS.PARTNERSHIPS && (
+                        <div className="animate-fade-in relative z-10">
+                            <PartnershipList />
                         </div>
                     )}
                 </div>

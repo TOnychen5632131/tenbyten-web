@@ -1,0 +1,43 @@
+[
+  {
+    "id": "86a0ff06-54f9-4e84-b73a-7186fa15e92b",
+    "brand_name": "测试",
+    "product_description": "测试",
+    "avatar_url": "https://puequypdemhxcefvxjmx.supabase.co/storage/v1/object/public/avatars/86a0ff06-54f9-4e84-b73a-7186fa15e92b/avatar-1766919520303.png",
+    "top_markets": [
+      "测试 1",
+      "测试 2",
+      "测试 3",
+      "测试 4"
+    ],
+    "created_at": "2025-12-28T10:58:41.352739+00:00",
+    "updated_at": "2025-12-28T10:58:41.231+00:00"
+  },
+  {
+    "id": "20fca56c-4271-44ee-b869-53282a1c1237",
+    "brand_name": "Jewelry ",
+    "product_description": "Jewelry ",
+    "avatar_url": "https://api.dicebear.com/7.x/initials/svg?seed=Jewelry ",
+    "top_markets": [
+      "Fremont market, Washington state",
+      "Seattle",
+      "Pike place",
+      "Bellevue"
+    ],
+    "created_at": "2025-12-28T21:21:52.945882+00:00",
+    "updated_at": "2025-12-28T21:57:03.957+00:00"
+  },
+  {
+    "id": "b12f97d0-240e-4dd9-9c48-2e17e8d9d14e",
+    "brand_name": "测试名字",
+    "product_description": "测试一下销售内幕",
+    "avatar_url": "https://puequypdemhxcefvxjmx.supabase.co/storage/v1/object/public/avatars/b12f97d0-240e-4dd9-9c48-2e17e8d9d14e/avatar-1766907233347.png",
+    "top_markets": [
+      "市场1",
+      "市场2",
+      "市场2"
+    ],
+    "created_at": "2025-12-28T07:26:33.057148+00:00",
+    "updated_at": "2025-12-29T15:47:34.932+00:00"
+  }
+]

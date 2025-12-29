@@ -452,8 +452,15 @@ const RevolutionHero = () => {
                     </div>
 
                     {/* Footer Text */}
-                    <div className="absolute bottom-6 md:bottom-6 text-white/40 text-[10px] md:text-[10px] text-center px-6 w-full uppercase tracking-widest font-medium leading-relaxed">
-                        tenbyten.vercel.app rights reserved by tenbyten
+                    <div className="absolute bottom-6 md:bottom-6 z-30 pointer-events-auto text-white/40 text-[10px] md:text-[10px] text-center px-6 w-full uppercase tracking-widest font-medium leading-relaxed">
+                        <span>tenbyten.vercel.app</span>
+                        <span className="mx-2">/</span>
+                        <a
+                            href="/about"
+                            className="text-white/70 underline decoration-white/30 underline-offset-4 hover:text-white hover:decoration-white/70 transition-colors"
+                        >
+                            About & Partnerships
+                        </a>
                     </div>
                 </>
             )}
