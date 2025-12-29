@@ -9,7 +9,9 @@ interface OpportunityDetailProps {
 
 const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
     const [reviews, setReviews] = useState<any[]>([]);
+    const [stats, setStats] = useState<{ rating: number | null, count: number | null }>({ rating: null, count: null });
     const [loadingReviews, setLoadingReviews] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         const fetchReviews = async () => {
@@ -19,6 +21,9 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                 const json = await res.json();
                 if (json.reviews) {
                     setReviews(json.reviews);
+                }
+                if (json.stats) {
+                    setStats(json.stats);
                 }
             } catch (err) {
                 console.error("Failed to load reviews", err);
@@ -30,9 +35,94 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
         if (data?.id) fetchReviews();
     }, [data.id]);
 
-    if (!data) return null;
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
 
-    return (
+    // Helper to calculate next occurrence
+    const getNextOccurrence = () => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (!data.season_start_date) return null;
+
+        const start = new Date(data.season_start_date + 'T00:00:00');
+        const end = data.season_end_date ? new Date(data.season_end_date + 'T00:00:00') : new Date('2030-01-01');
+
+        if (today > end) return null;
+
+        // Start searching from today or start date, whichever is later
+        let searchStart = today < start ? start : today;
+
+        if (!data.recurring_pattern) {
+            return start >= today ? start : (today <= end ? today : null);
+        }
+
+        const pattern = data.recurring_pattern;
+
+        // Weekly
+        if (pattern.includes('Weekly')) {
+            const daysMap: Record<string, number> = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+            const daysStr = pattern.replace('Weekly on ', '');
+            const days = daysStr.split(', ').map((d: string) => daysMap[d]);
+
+            // Look ahead 7 days from searchStart
+            for (let i = 0; i < 7; i++) {
+                const checkDate = new Date(searchStart);
+                checkDate.setDate(searchStart.getDate() + i);
+
+                if (checkDate > end) return null;
+                if (days.includes(checkDate.getDay())) {
+                    return checkDate;
+                }
+            }
+        }
+
+        // Monthly
+        if (pattern.includes('Monthly')) {
+            const parts = pattern.split(' '); // ["Monthly", "on", "the", "3rd", "Saturday"]
+            const ordinalStr = parts[3];
+            const dayStr = parts[4];
+
+            const daysMap: Record<string, number> = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+            const targetDay = daysMap[dayStr];
+
+            // Check upcoming months (up to 12) from searchStart
+            for (let i = 0; i < 12; i++) {
+                const currentMonth = new Date(searchStart.getFullYear(), searchStart.getMonth() + i, 1);
+
+                let date = new Date(currentMonth);
+                while (date.getDay() !== targetDay) {
+                    date.setDate(date.getDate() + 1);
+                }
+
+                if (ordinalStr === '2nd') date.setDate(date.getDate() + 7);
+                if (ordinalStr === '3rd') date.setDate(date.getDate() + 14);
+                if (ordinalStr === '4th') date.setDate(date.getDate() + 21);
+                if (ordinalStr === 'Last') {
+                    const nextMonthFn = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                    let lastDate = new Date(nextMonthFn);
+                    while (lastDate.getDay() !== targetDay) {
+                        lastDate.setDate(lastDate.getDate() - 1);
+                    }
+                    date = lastDate;
+                }
+
+                if (date >= searchStart && date <= end) {
+                    return date;
+                }
+            }
+        }
+
+        return null;
+    };
+
+    const nextDate = getNextOccurrence();
+
+    if (!data || !mounted) return null;
+
+    const content = (
         <div className="fixed inset-0 z-[10002] flex flex-col items-center justify-end md:justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
             <div className="absolute inset-0" onClick={onClose} />
 
@@ -63,36 +153,50 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                                     {data.type === 'MARKET' ? 'Offline Event' : 'Consignment Shop'}
                                 </p>
                             </div>
-                            {/* Circular Counter (Mock) */}
-                            <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center shrink-0 shadow-lg">
-                                <div className="text-center leading-none">
-                                    <span className="block text-black font-bold text-sm">24</span>
-                                    <span className="block text-black/40 text-[10px] font-medium">/ 50</span>
-                                </div>
+                            {/* Circular Counter - Google Ratings */}
+                            <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center shrink-0 shadow-lg relative group overflow-hidden">
+                                {stats.rating ? (
+                                    <div className="text-center leading-none">
+                                        <span className="block text-black font-bold text-lg">{stats.rating.toFixed(1)}</span>
+                                        <span className="block text-black/40 text-[10px] font-medium leading-none mt-0.5">{stats.count > 1000 ? (stats.count / 1000).toFixed(1) + 'k' : stats.count}</span>
+                                    </div>
+                                ) : (
+                                    <div className="text-center leading-none">
+                                        <span className="block text-black font-bold text-sm">--</span>
+                                        <span className="block text-black/40 text-[10px] font-medium">Rate</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         {/* Date/Time Strip */}
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 mb-4">
-                            <div className="w-12 h-12 rounded-xl bg-white/10 flex flex-col items-center justify-center shrink-0">
-                                <span className="text-[10px] text-white/60 uppercase font-bold">
-                                    {data.season_start_date ? new Date(data.season_start_date).toLocaleDateString('en-US', { month: 'short' }) : 'OPEN'}
+                            <div className="w-14 h-14 rounded-xl bg-white/10 flex flex-col items-center justify-center shrink-0 border border-white/5">
+                                <span className="text-[10px] text-white/60 uppercase font-bold tracking-wider">
+                                    {nextDate ? nextDate.toLocaleDateString('en-US', { month: 'short' }) : 'END'}
                                 </span>
-                                <span className="text-lg text-white font-bold">
-                                    {data.season_start_date ? new Date(data.season_start_date).getDate() : 'NOW'}
+                                <span className="text-xl text-white font-bold leading-none mt-0.5">
+                                    {nextDate ? nextDate.getDate() : '--'}
                                 </span>
                             </div>
                             <div>
                                 <div className="text-white font-medium text-sm">
-                                    {data.season_start_date ? (
-                                        <>
-                                            {new Date(data.season_start_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                                            {data.season_end_date && ` - ${ new Date(data.season_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) } `}
-                                        </>
+                                    {data.recurring_pattern ? (
+                                        <span className="text-blue-300 font-bold">{data.recurring_pattern}</span>
                                     ) : (
-                                        data.recurring_pattern || "See details for schedule"
+                                        data.season_start_date ? (
+                                            new Date(data.season_start_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+                                        ) : "See details for schedule"
                                     )}
                                 </div>
+
+                                {(data.season_start_date || data.season_end_date) && (
+                                    <div className="text-white/50 text-xs mt-0.5">
+                                        Season: {data.season_start_date ? new Date(data.season_start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
+                                        {data.season_end_date ? ` - ${new Date(data.season_end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                                    </div>
+                                )}
+
                                 <div className="text-white/50 text-xs flex items-center gap-1 mt-0.5">
                                     <Calendar size={12} />
                                     {data.start_time ? data.start_time.slice(0, 5) : ''}
@@ -167,90 +271,100 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                                 </div>
                                 <a
                                     href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(data.address || '')}`}
-target = "_blank"
-rel = "noopener noreferrer"
-className = "self-start flex items-center gap-1 bg-white text-black px-3 py-1.5 rounded-full text-xs font-bold hover:bg-gray-200 transition-colors"
-    >
-    <ExternalLink size={12} />
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="self-start flex items-center gap-1 bg-white text-black px-3 py-1.5 rounded-full text-xs font-bold hover:bg-gray-200 transition-colors"
+                                >
+                                    <ExternalLink size={12} />
                                     Get Direction
                                 </a >
                             </div >
                         </div >
 
-    {/* Hosted By */ }
-    < div className = "space-y-3 mb-8" >
-        <div className="bg-white/5 border border-white/5 rounded-2xl p-3 flex justify-between items-center">
-            <span className="text-white/60 text-sm pl-1">Hosted By</span>
-            <div className="flex items-center gap-2 bg-black/20 rounded-full pl-1 pr-3 py-1">
-                <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
-                    <User size={14} className="text-blue-200" />
-                </div>
-                <span className="text-white text-xs font-medium truncate max-w-[150px]">
-                    {data.organizer_name || "Tenbyten Host"}
-                </span>
-            </div>
-        </div>
-                        </div >
+                        {/* Hosted By */}
+                        <div className="space-y-3 mb-8">
+                            <div className="bg-white/5 border border-white/5 rounded-2xl p-3 flex justify-between items-center">
+                                <span className="text-white/60 text-sm pl-1">Hosted By</span>
+                                <div className="flex items-center gap-2 bg-black/20 rounded-full pl-1 pr-3 py-1">
+                                    <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                        <User size={14} className="text-blue-200" />
+                                    </div>
+                                    <span className="text-white text-xs font-medium truncate max-w-[150px]">
+                                        {data.organizer_name || "Tenbyten Host"}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
 
-    {/* About Event */ }
-    < div className = "mb-6" >
+                        {/* About Event */}
+                        <div className="mb-6">
                             <h3 className="text-white font-bold text-lg mb-2">About Event</h3>
                             <p className="text-white/60 text-sm leading-relaxed font-light whitespace-pre-wrap">
                                 {data.description || "No description provided."}
                             </p>
-                        </div >
+                        </div>
 
-    {/* Features / Insights */ }
-{
-    (data.tags?.length > 0 || data.categories?.length > 0) && (
-        <div className="mb-24 bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 relative overflow-hidden group">
-            {/* Decorative Background Gradient */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                        {/* Features / Insights */}
+                        {
+                            (data.tags?.length > 0 || data.categories?.length > 0) && (
+                                <div className="mb-24 bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+                                    {/* Decorative Background Gradient */}
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
-            <div className="flex items-center gap-2 mb-4">
-                <ShieldCheck className="text-blue-400" size={20} />
-                <h3 className="text-white font-bold text-lg">Market Features</h3>
-            </div>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <ShieldCheck className="text-blue-400" size={20} />
+                                        <h3 className="text-white font-bold text-lg">Market Features</h3>
+                                    </div>
 
-            <div className="flex flex-wrap gap-2">
-                {data.categories?.map((cat: string, i: number) => (
-                    <span key={`cat-${i}`} className="text-[10px] px-2 py-1 bg-blue-500/10 text-blue-300 border border-blue-500/20 rounded-md">
-                        {cat}
-                    </span>
-                ))}
-                {data.tags?.map((tag: string, i: number) => (
-                    <span key={`tag-${i}`} className="text-[10px] px-2 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-md">
-                        {tag}
-                    </span>
-                ))}
-            </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {data.categories?.map((cat: string, i: number) => (
+                                            <span key={`cat-${i}`} className="text-[10px] px-2 py-1 bg-blue-500/10 text-blue-300 border border-blue-500/20 rounded-md">
+                                                {cat}
+                                            </span>
+                                        ))}
+                                        {data.tags?.map((tag: string, i: number) => (
+                                            <span key={`tag-${i}`} className="text-[10px] px-2 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-md">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
 
-            {data.vendor_count && (
-                <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-white/50 text-xs">
-                    <Users size={14} />
-                    <span>Approx. {data.vendor_count} Vendors</span>
-                </div>
-            )}
-        </div>
-    )
-}
+                                    {data.vendor_count && (
+                                        <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-white/50 text-xs">
+                                            <Users size={14} />
+                                            <span>Approx. {data.vendor_count} Vendors</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        }
 
-                    </div >
+                    </div>
 
-    {/* Bottom Action Bar */ }
-    < div className = "absolute bottom-0 left-0 right-0 p-4 pb-8 md:p-6 bg-gradient-to-t from-[#1e1e1e] from-60% via-[#1e1e1e]/80 to-transparent pointer-events-none flex justify-center" >
-        <button
-            onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(data.title + " booth application")}`, '_blank')}
-            className="pointer-events-auto w-full bg-white text-black font-bold text-lg py-4 rounded-full shadow-[0_10px_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-        >
-            <ExternalLink size={20} />
-            {data.type === 'MARKET' ? 'Apply for Booth' : 'Contact Shop'}
-        </button>
+                    {/* Bottom Action Bar */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 md:p-6 bg-gradient-to-t from-[#1e1e1e] from-60% via-[#1e1e1e]/80 to-transparent pointer-events-none flex justify-center">
+                        <button
+                            onClick={() => {
+                                const targetUrl = data.application_link || data.website;
+                                if (targetUrl) {
+                                    window.open(targetUrl, '_blank');
+                                } else {
+                                    window.open(`https://www.google.com/search?q=${encodeURIComponent(data.title + " booth application")}`, '_blank');
+                                }
+                            }}
+                            className="pointer-events-auto w-full bg-white text-black font-bold text-lg py-4 rounded-full shadow-[0_10px_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                        >
+                            <ExternalLink size={20} />
+                            {data.type === 'MARKET' ? 'Apply for Booth' : 'Contact Shop'}
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     );
+
+    const { createPortal } = require('react-dom');
+    return createPortal(content, document.body);
 };
 
 export default OpportunityDetail;

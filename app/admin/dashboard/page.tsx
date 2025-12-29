@@ -2,19 +2,22 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Store, ShoppingBag, LogOut, Upload, FileJson, LayoutList } from 'lucide-react';
+import { Plus, Store, ShoppingBag, LogOut, Upload, FileJson, LayoutList, User, Database } from 'lucide-react';
 import MarketForm from '@/components/admin/MarketForm';
 import ConsignmentForm from '@/components/admin/ConsignmentForm';
 import JsonImportForm from '@/components/admin/JsonImportForm';
 import OpportunityList from '@/components/admin/OpportunityList';
+import UserList from '@/components/admin/UserList';
 import AdminDrawer from '@/components/admin/AdminDrawer';
+import VendorProfileForm from '@/components/admin/VendorProfileForm';
 
 // Tabs
 const TABS = {
     MANAGE: 'MANAGE',
     MARKET: 'MARKET',
     CONSIGNMENT: 'CONSIGNMENT',
-    IMPORT: 'IMPORT'
+    IMPORT: 'IMPORT',
+    USERS: 'USERS'
 };
 
 const AdminDashboard = () => {
@@ -143,6 +146,27 @@ const AdminDashboard = () => {
                         <Upload size={20} />
                         Import Data
                     </button>
+                    <button
+                        onClick={() => handleTabChange(TABS.USERS)}
+                        className={`text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === TABS.USERS
+                            ? 'bg-white/10 text-white font-bold border border-white/10'
+                            : 'text-white/50 hover:bg-white/5 hover:text-white'
+                            }`}
+                    >
+                        <User size={20} />
+                        Manage Users
+                    </button>
+
+                    <div className="h-[1px] bg-white/10 my-2 mx-4" />
+
+                    <a
+                        href="/api/admin/backup"
+                        download
+                        className="text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all text-white/50 hover:bg-white/5 hover:text-white"
+                    >
+                        <Database size={20} />
+                        Backup Database
+                    </a>
                 </div>
 
                 {/* Content Panel */}
@@ -151,7 +175,8 @@ const AdminDashboard = () => {
                     <div className={`absolute top-0 right-0 w-96 h-96 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none transition-colors duration-500 opacity-20
                         ${activeTab === TABS.MARKET ? 'bg-blue-500' :
                             activeTab === TABS.CONSIGNMENT ? 'bg-emerald-500' :
-                                activeTab === TABS.MANAGE ? 'bg-white' : 'bg-violet-500'}`}
+                                activeTab === TABS.USERS ? 'bg-pink-500' :
+                                    activeTab === TABS.MANAGE ? 'bg-white' : 'bg-violet-500'}`}
                     />
 
                     {activeTab === TABS.MANAGE && (
@@ -189,6 +214,12 @@ const AdminDashboard = () => {
                             <JsonImportForm />
                         </div>
                     )}
+
+                    {activeTab === TABS.USERS && (
+                        <div className="animate-fade-in relative z-10">
+                            <UserList onEdit={handleEdit} />
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -203,6 +234,9 @@ const AdminDashboard = () => {
                 )}
                 {editingItem && editingItem.type === 'CONSIGNMENT' && (
                     <ConsignmentForm initialData={editingItem} onSuccess={handleSuccess} />
+                )}
+                {editingItem && editingItem.type === 'USER' && (
+                    <VendorProfileForm initialData={editingItem} onSuccess={handleSuccess} />
                 )}
             </AdminDrawer>
         </div>

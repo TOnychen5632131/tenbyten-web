@@ -30,7 +30,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 export async function generateSearchResults(query: string): Promise<any[]> {
     try {
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: "gpt-5-mini",
             messages: [
                 {
                     role: "system",

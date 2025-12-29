@@ -22,11 +22,12 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
     const [totalPages, setTotalPages] = useState(0);
 
     const [filterType, setFilterType] = useState<string>('ALL'); // ALL, MARKET, CONSIGNMENT
+    const [year, setYear] = useState<number>(2026); // Default 2026
 
     // Debounce/Auto-fetch currently only on filters/pagination, NOT search query
     useEffect(() => {
         fetchOpportunities();
-    }, [currentPage, filterType, itemsPerPage]); // Removed searchQuery from dependencies
+    }, [currentPage, filterType, itemsPerPage, year]); // Removed searchQuery from dependencies
 
     const fetchOpportunities = async (overridePage?: number) => {
         setLoading(true);
@@ -38,7 +39,8 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
                 page: pageToFetch.toString(),
                 limit: itemsPerPage.toString(),
                 q: searchQuery,
-                type: filterType
+                type: filterType,
+                year: year.toString()
             });
 
             const res = await fetch(`/api/opportunities?${params.toString()}`);
@@ -119,6 +121,11 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
 
     const handleFilterChange = (val: string) => {
         setFilterType(val);
+        setCurrentPage(1);
+    };
+
+    const handleYearChange = (val: string) => {
+        setYear(parseInt(val));
         setCurrentPage(1);
     };
 
@@ -228,6 +235,15 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
                         <option value="MARKET">Markets</option>
                         <option value="CONSIGNMENT">Shops</option>
                     </select>
+
+                    <select
+                        value={year}
+                        onChange={(e) => handleYearChange(e.target.value)}
+                        className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white/80 focus:outline-none focus:border-blue-500/50"
+                    >
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                    </select>
                 </div>
 
                 {selectedIds.size > 0 && (
@@ -302,7 +318,7 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
                                         <div className="flex flex-col gap-1">
                                             <span className="text-xs text-white/70">
                                                 {(item.season_start_date)
-                                                    ? new Date(item.season_start_date).toLocaleDateString()
+                                                    ? new Date(item.season_start_date + 'T00:00:00').toLocaleDateString()
                                                     : <span className="text-emerald-400">Published</span>
                                                 }
                                             </span>

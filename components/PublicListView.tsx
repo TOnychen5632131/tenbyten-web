@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Star, ArrowUpRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, ArrowUpRight, ChevronDown } from 'lucide-react';
 
 interface PublicListViewProps {
     onSelect: (item: any) => void;
@@ -10,9 +10,11 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
+    const [year, setYear] = useState(2026); // Default to 2026
     const itemsPerPage = 10;
     const [totalPages, setTotalPages] = useState(0);
     const [totalItems, setTotalItems] = useState(0);
+    const [isYearOpen, setIsYearOpen] = useState(false);
     const initialLoadRef = useRef(true);
 
     const [loadingStage, setLoadingStage] = useState(0);
@@ -32,7 +34,8 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
             try {
                 const params = new URLSearchParams({
                     page: page.toString(),
-                    limit: itemsPerPage.toString()
+                    limit: itemsPerPage.toString(),
+                    year: year.toString() // Pass year param
                 });
                 const fetchPromise = fetch(`/api/opportunities?${params.toString()}`);
                 const res = isInitialLoad
@@ -74,7 +77,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
             }
         };
         fetchItems();
-    }, [page, itemsPerPage]);
+    }, [page, itemsPerPage, year]); // Add year dependency
 
     // Loading text cycle
     useEffect(() => {
@@ -92,6 +95,8 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
+
+    const displayTotal = totalItems + 200;
 
     if (loading) {
         return (
@@ -125,8 +130,44 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
         <div className="w-full min-h-[100dvh] pt-32 pb-32 px-4 md:px-0 flex flex-col items-center bg-black">
             <div className="w-full max-w-2xl">
 
-                <div className="text-white/40 text-[10px] uppercase tracking-widest font-medium mb-6 pl-2 mt-8">
-                    Found {totalItems + 2000} opportunities using Tenbyten's latest AI technology
+                <div className="flex justify-between items-end mb-6 mt-8 pl-2">
+                    <div className="text-white/40 text-[10px] uppercase tracking-widest font-medium">
+                        Found {displayTotal} opportunities in {year}
+                    </div>
+
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsYearOpen(!isYearOpen)}
+                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white font-bold text-xs hover:bg-white/10 transition-all backdrop-blur-md"
+                        >
+                            <span className="opacity-50 text-[10px] uppercase mr-1">Year</span>
+                            {year}
+                            <ChevronDown size={14} className={`transition-transform duration-300 ${isYearOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {isYearOpen && (
+                            <>
+                                <div className="fixed inset-0 z-10" onClick={() => setIsYearOpen(false)} />
+                                <div className="absolute right-0 top-full mt-2 w-32 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-20 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                                    {[2026, 2025].map((y) => (
+                                        <button
+                                            key={y}
+                                            onClick={() => {
+                                                setYear(y);
+                                                setPage(1);
+                                                setIsYearOpen(false);
+                                            }}
+                                            className={`px-4 py-3 text-left text-xs font-medium hover:bg-white/5 transition-colors flex justify-between items-center ${year === y ? 'text-white bg-white/5' : 'text-white/50'
+                                                }`}
+                                        >
+                                            {y}
+                                            {year === y && <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
@@ -152,11 +193,84 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                                             </span>
 
                                             {/* Date Badge */}
-                                            {(item.season_start_date || item.start_date) && (
-                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/80 border border-white/10 flex items-center gap-1">
-                                                    Open: {new Date(item.season_start_date || item.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                </span>
-                                            )}
+                                            {(() => {
+                                                const getNextOccurrence = (data: any) => {
+                                                    const today = new Date();
+                                                    today.setHours(0, 0, 0, 0);
+
+                                                    if (!data.season_start_date && !data.start_date) return null;
+
+                                                    const startStr = data.season_start_date || data.start_date;
+                                                    const start = new Date(startStr + 'T00:00:00');
+                                                    const end = data.season_end_date ? new Date(data.season_end_date + 'T00:00:00') : new Date('2030-01-01');
+
+                                                    if (today > end) return null;
+
+                                                    const searchStart = today < start ? start : today;
+
+                                                    if (!data.recurring_pattern) {
+                                                        return start >= today ? start : (today <= end ? today : null);
+                                                    }
+
+                                                    const pattern = data.recurring_pattern;
+
+                                                    // Weekly
+                                                    if (pattern.includes('Weekly')) {
+                                                        const daysMap: Record<string, number> = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+                                                        const daysStr = pattern.replace('Weekly on ', '');
+                                                        const days = daysStr.split(', ').map((d: string) => daysMap[d]);
+
+                                                        for (let i = 0; i < 7; i++) {
+                                                            const checkDate = new Date(searchStart);
+                                                            checkDate.setDate(searchStart.getDate() + i);
+                                                            if (checkDate > end) return null;
+                                                            if (days.includes(checkDate.getDay())) return checkDate;
+                                                        }
+                                                    }
+
+                                                    // Monthly (simplified fallback for list view if complex)
+                                                    if (pattern.includes('Monthly')) {
+                                                        // Fallback to simply showing "Next: Check details" or try to calc
+                                                        // Let's copy the full logic to be safe and accurate
+                                                        const parts = pattern.split(' ');
+                                                        if (parts.length >= 5) {
+                                                            const ordinalStr = parts[3];
+                                                            const dayStr = parts[4];
+                                                            const daysMap: Record<string, number> = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+                                                            const targetDay = daysMap[dayStr];
+
+                                                            for (let i = 0; i < 6; i++) { // Check next 6 months
+                                                                const currentMonth = new Date(searchStart.getFullYear(), searchStart.getMonth() + i, 1);
+                                                                let date = new Date(currentMonth);
+                                                                while (date.getDay() !== targetDay) date.setDate(date.getDate() + 1);
+
+                                                                if (ordinalStr === '2nd') date.setDate(date.getDate() + 7);
+                                                                if (ordinalStr === '3rd') date.setDate(date.getDate() + 14);
+                                                                if (ordinalStr === '4th') date.setDate(date.getDate() + 21);
+                                                                if (ordinalStr === 'Last') {
+                                                                    const nextMonthFn = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                                                                    let lastDate = new Date(nextMonthFn);
+                                                                    while (lastDate.getDay() !== targetDay) lastDate.setDate(lastDate.getDate() - 1);
+                                                                    date = lastDate;
+                                                                }
+                                                                if (date >= searchStart && date <= end) return date;
+                                                            }
+                                                        }
+                                                    }
+
+                                                    // Fallback check if simple date match
+                                                    return start >= today ? start : (today <= end ? today : null);
+                                                };
+
+                                                const nextDate = getNextOccurrence(item);
+                                                if (!nextDate) return null;
+
+                                                return (
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/80 border border-white/10 flex items-center gap-1">
+                                                        Next: {nextDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                    </span>
+                                                );
+                                            })()}
 
                                             {/* Rating Badge */}
                                             {Number.isFinite(Number(item.google_rating)) && (
@@ -282,7 +396,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                 {/* Footer */}
                 <div className="mt-16 text-center">
                     <div className="text-white/20 text-[10px] uppercase tracking-[0.2em]">
-                        www.tenbyten.com
+                        TENBYTEN.VERCEL.APP RIGHTS RESERVED BY TENBYTEN
                     </div>
                 </div>
 

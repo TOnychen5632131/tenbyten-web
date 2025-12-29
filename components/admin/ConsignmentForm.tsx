@@ -7,12 +7,21 @@ interface ConsignmentFormProps {
     onSuccess?: () => void;
 }
 
+const formatCoordinate = (value: any) => {
+    if (value === null || value === undefined) return '';
+    const num = Number(value);
+    if (!Number.isFinite(num) || num === 0) return '';
+    return String(value);
+};
+
 const ConsignmentForm: React.FC<ConsignmentFormProps> = ({ initialData, onSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
         description: '', // This was missing in JSX but present in state
         address: '',
+        latitude: '',
+        longitude: '',
         accepted_items: '', // comma separated in UI
         excluded_brands: '', // comma separated
         consignment_split: '',
@@ -28,6 +37,8 @@ const ConsignmentForm: React.FC<ConsignmentFormProps> = ({ initialData, onSucces
                 title: initialData.title || '',
                 description: initialData.description || '',
                 address: initialData.address || '',
+                latitude: formatCoordinate(initialData.latitude),
+                longitude: formatCoordinate(initialData.longitude),
                 accepted_items: Array.isArray(initialData.accepted_items) ? initialData.accepted_items.join(', ') : '',
                 excluded_brands: Array.isArray(initialData.excluded_brands) ? initialData.excluded_brands.join(', ') : '',
                 consignment_split: initialData.consignment_split || '',
@@ -96,6 +107,34 @@ const ConsignmentForm: React.FC<ConsignmentFormProps> = ({ initialData, onSucces
                 <div className="md:col-span-2">
                     <label className="block text-xs uppercase tracking-wider text-white/50 mb-2">Address</label>
                     <input name="address" value={formData.address} required onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-white focus:border-emerald-500 outline-none transition-colors" placeholder="456 Main St" />
+                </div>
+
+                <div>
+                    <label className="block text-xs uppercase tracking-wider text-white/50 mb-2">Latitude (Optional)</label>
+                    <input
+                        type="number"
+                        step="any"
+                        name="latitude"
+                        value={formData.latitude}
+                        onChange={handleChange}
+                        className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-white focus:border-emerald-500 outline-none transition-colors"
+                        placeholder="47.6062"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs uppercase tracking-wider text-white/50 mb-2">Longitude (Optional)</label>
+                    <input
+                        type="number"
+                        step="any"
+                        name="longitude"
+                        value={formData.longitude}
+                        onChange={handleChange}
+                        className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-white focus:border-emerald-500 outline-none transition-colors"
+                        placeholder="-122.3321"
+                    />
+                </div>
+                <div className="md:col-span-2 text-[10px] text-white/40">
+                    Leave both blank to auto-fill coordinates from the address.
                 </div>
             </div>
 

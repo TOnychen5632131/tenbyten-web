@@ -8,6 +8,7 @@ import SegmentedNav from './SegmentedNav';
 import MapContainer from './MapContainer';
 import OpportunityDetail from './OpportunityDetail';
 import PublicListView from './PublicListView';
+import TrendingList from './TrendingList';
 
 const RevolutionHero = () => {
     const router = useRouter();
@@ -36,6 +37,8 @@ const RevolutionHero = () => {
     const [selectedResult, setSelectedResult] = useState<any>(null);
     const [placeholderIndex, setPlaceholderIndex] = useState(0);
     const [titleClickCount, setTitleClickCount] = useState(0);
+    const [hasSearched, setHasSearched] = useState(false);
+    const [lastSearchedQuery, setLastSearchedQuery] = useState('');
 
     const searchPlaceholders = [
         "Find a vintage market open on Sunday",
@@ -43,6 +46,13 @@ const RevolutionHero = () => {
         "High foot traffic malls near me",
         "Suggest a pop-up spot for next week",
         "Where can I sell handmade jewelry?"
+    ];
+
+    const emptyStateSuggestions = [
+        { label: "Markets I can join next week", query: "Markets I can join next week" },
+        { label: "Vintage markets this weekend", query: "Vintage markets this weekend" },
+        { label: "Food truck markets this week", query: "Food truck markets this week" },
+        { label: "Community markets near me", query: "Community markets near me" }
     ];
 
     // Placeholder Carousel Effect
@@ -77,13 +87,22 @@ const RevolutionHero = () => {
     };
 
     // Manual Search Handler
-    const handleSearch = async () => {
-        if (!query.trim()) {
+    const handleSearch = async (overrideQuery?: string) => {
+        const queryToUse = (typeof overrideQuery === 'string' ? overrideQuery : query).trim();
+        if (typeof overrideQuery === 'string') {
+            setQuery(overrideQuery);
+        }
+        if (!queryToUse) {
             setResults([]);
             setIsSearching(false);
+            setHasSearched(false);
+            setLastSearchedQuery('');
+            setProgress(0);
             return;
         }
 
+        setHasSearched(true);
+        setLastSearchedQuery(queryToUse);
         setIsSearching(true);
         setResults([]); // Clear previous results immediately
         setProgress(0);
@@ -94,7 +113,7 @@ const RevolutionHero = () => {
         // Actual Fetch
         const fetchPromise = (async () => {
             try {
-                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const res = await fetch(`/api/search?q=${encodeURIComponent(queryToUse)}`);
                 const data = await res.json();
                 return data.results || [];
             } catch (e) {
@@ -129,6 +148,8 @@ const RevolutionHero = () => {
         setResults([]);
         setIsSearching(false);
         setProgress(0);
+        setHasSearched(false);
+        setLastSearchedQuery('');
     };
 
     return (
@@ -163,9 +184,9 @@ const RevolutionHero = () => {
                     </div>
 
                     {/* Content */}
-                    <div className={`relative z-10 w-full px-4 md:px-6 flex flex-col items-center transition-all duration-500 ${results.length > 0 ? 'pt-44 justify-start h-full' : 'justify-center h-full'}`}>
+                    <div className={`relative z-10 w-full px-4 md:px-6 flex flex-col items-center transition-all duration-500 ${(results.length > 0 || isSearching || hasSearched) ? 'pt-44 justify-start h-full' : 'justify-center h-full'}`}>
                         {/* Title - fades out when searching to make room */}
-                        {results.length === 0 && !isSearching && (
+                        {results.length === 0 && !isSearching && !hasSearched && (
                             <div className="flex flex-col items-center">
                                 <h1
                                     onClick={() => {
@@ -187,7 +208,7 @@ const RevolutionHero = () => {
                         )}
 
                         {/* Search Bar Container - Transitions from Center to Top */}
-                        <div className={`w-full max-w-2xl flex flex-col items-center transition-all duration-500 z-50 ${results.length > 0 || isSearching ? 'mb-4' : 'mb-8'}`}>
+                        <div className={`w-full max-w-2xl flex flex-col items-center transition-all duration-500 z-50 ${(results.length > 0 || isSearching || hasSearched) ? 'mb-4' : 'mb-8'}`}>
                             {/* Back Button (Only visible when results exist) */}
                             <div className="w-full flex items-center gap-3">
                                 {(results.length > 0) && (
@@ -234,7 +255,7 @@ const RevolutionHero = () => {
                                         />
                                     )}
                                     <button
-                                        onClick={handleSearch}
+                                        onClick={() => handleSearch()}
                                         className="ml-2 px-4 py-1.5 bg-[#4285f4] text-white rounded-full text-sm font-semibold hover:bg-[#3367d6] transition-colors shadow-md active:scale-95"
                                     >
                                         Search
@@ -307,13 +328,46 @@ const RevolutionHero = () => {
                             </div>
                         )}
 
+                        {/* Empty State */}
+                        {results.length === 0 && !isSearching && hasSearched && (
+                            <div className="w-full max-w-2xl mt-6 animate-fade-in">
+                                <div className="rounded-3xl border border-white/10 bg-black/40 backdrop-blur-2xl p-6 md:p-8 text-center">
+                                    <div className="text-white text-lg md:text-xl font-semibold tracking-tight">
+                                        No results found
+                                    </div>
+                                    {lastSearchedQuery && (
+                                        <div className="mt-2 text-white/60 text-sm md:text-base">
+                                            "{lastSearchedQuery}"
+                                        </div>
+                                    )}
+                                    <div className="mt-3 text-white/50 text-xs md:text-sm">
+                                        Try searching by time, category, or location:
+                                    </div>
+                                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                                        {emptyStateSuggestions.map((suggestion) => (
+                                            <button
+                                                key={suggestion.query}
+                                                onClick={() => handleSearch(suggestion.query)}
+                                                className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-white/80 text-xs md:text-sm hover:bg-white/10 transition-colors"
+                                            >
+                                                {suggestion.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
 
 
                         {/* Buttons (Hidden when searching) */}
-                        {results.length === 0 && !isSearching && (
+                        {results.length === 0 && !isSearching && !hasSearched && (
                             <div className="flex flex-wrap justify-center gap-3 md:gap-4 w-full px-2">
-                                <button className="px-6 py-3 md:py-2.5 rounded-full border border-white/60 bg-white/10 text-white text-sm md:text-base font-medium hover:bg-white/20 active:bg-white/30 transition-all backdrop-blur-sm whitespace-nowrap active:scale-95 shadow-lg">
-                                    Nearby Sales
+                                <button
+                                    onClick={() => setActiveTab('trending')}
+                                    className="px-6 py-3 md:py-2.5 rounded-full border border-white/60 bg-white/10 text-white text-sm md:text-base font-medium hover:bg-white/20 active:bg-white/30 transition-all backdrop-blur-sm whitespace-nowrap active:scale-95 shadow-lg"
+                                >
+                                    Trending Markets
                                 </button>
                                 <a href="https://heretoday.vercel.app/" className="px-6 py-3 md:py-2.5 rounded-full border border-white/60 bg-white/10 text-white text-sm md:text-base font-medium hover:bg-white/20 active:bg-white/30 transition-all backdrop-blur-sm whitespace-nowrap active:scale-95 shadow-lg flex items-center justify-center">
                                     Digital Card
@@ -333,6 +387,16 @@ const RevolutionHero = () => {
             {activeTab === 'map' && (
                 <div className="absolute inset-0 z-[40] bg-black animate-fade-in">
                     <MapContainer />
+                </div>
+            )}
+
+            {/* TRENDING VIEW */}
+            {activeTab === 'trending' && (
+                <div className="absolute inset-0 z-[50] bg-black animate-slide-up overflow-y-auto">
+                    <TrendingList
+                        onSelect={setSelectedResult}
+                        onBack={() => setActiveTab('search')}
+                    />
                 </div>
             )}
 

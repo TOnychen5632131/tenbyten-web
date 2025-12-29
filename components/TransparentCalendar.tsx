@@ -61,13 +61,22 @@ const TransparentCalendar = ({ selectedDate, onSelect, onClose }: TransparentCal
         return days;
     };
 
-    return (
-        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-end md:justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+    // Portal Mounting safegaurd
+    const [mounted, setMounted] = useState(false);
+    React.useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
+
+    if (!mounted) return null;
+
+    const content = (
+        <div className="fixed inset-0 z-[99999] flex flex-col items-center justify-end md:justify-center bg-black/60 backdrop-blur-sm animate-fade-in" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
             {/* Click outside to close area */}
             <div className="absolute inset-0" onClick={onClose} />
 
             {/* Calendar Container */}
-            <div className="relative w-full max-w-[360px] mb-8 md:mb-0 bg-zinc-900/40 backdrop-blur-3xl border border-white/10 rounded-[40px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-slide-up transform transition-all">
+            <div className="relative w-full max-w-[360px] mb-8 md:mb-0 bg-zinc-900/90 backdrop-blur-3xl border border-white/10 rounded-[40px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-slide-up transform transition-all z-10 mx-4">
 
                 {/* Header Section */}
                 <div className="px-6 pt-6 pb-4 flex items-center justify-between">
@@ -110,6 +119,10 @@ const TransparentCalendar = ({ selectedDate, onSelect, onClose }: TransparentCal
             </div>
         </div>
     );
+
+    // Dynamic import for createPortal to avoid SSR issues
+    const { createPortal } = require('react-dom');
+    return createPortal(content, document.body);
 };
 
 export default TransparentCalendar;

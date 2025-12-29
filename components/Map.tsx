@@ -1,6 +1,6 @@
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup, ZoomControl, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
 import 'leaflet-defaulticon-compatibility';
@@ -9,40 +9,43 @@ import React from 'react';
 import { MapPin } from 'lucide-react';
 import ReactDOMServer from 'react-dom/server';
 
-const LocationController = () => {
-    const map = useMap();
+interface LocationControllerProps {
+    onLocation: (coords: [number, number]) => void;
+}
 
+const LocationController = ({ onLocation }: LocationControllerProps) => {
     React.useEffect(() => {
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const { latitude, longitude } = position.coords;
-                    if (map) {
-                        map.flyTo([latitude, longitude], 13);
-                    }
+                    onLocation([latitude, longitude]);
                 },
                 (error) => {
                     console.error("Error getting location: ", error);
                 }
             );
         }
-    }, [map]);
+    }, [onLocation]);
 
     return null;
 };
 
 interface MapProps {
     pins: Array<{
-        id: number;
+        id: string | number;
         lat: number;
         lng: number;
-        type: string;
+        type: 'MARKET' | 'CONSIGNMENT' | string;
         title: string;
     }>;
-    filterType: string;
+    filterType: 'MARKET' | 'CONSIGNMENT';
+    onSelect: (id: string | number) => void;
 }
 
-const Map = ({ pins, filterType }: MapProps) => {
+const Map = ({ pins, filterType, onSelect }: MapProps) => {
+    const [userLocation, setUserLocation] = React.useState<[number, number] | null>(null);
+
     // Custom icon generator
     const createCustomIcon = (type: string) => {
         const colorClass = type === 'MARKET' ? 'text-blue-500' : 'text-emerald-500';
@@ -62,10 +65,22 @@ const Map = ({ pins, filterType }: MapProps) => {
         });
     };
 
+    const createUserLocationIcon = () => {
+        return divIcon({
+            html: '<div style="width:14px;height:14px;background:#3b82f6;border:2px solid #ffffff;border-radius:50%;box-shadow:0 0 10px rgba(59,130,246,0.6);"></div>',
+            className: 'user-location-icon',
+            iconSize: [14, 14],
+            iconAnchor: [7, 7],
+        });
+    };
+
+    const [mapKey] = React.useState(() => `map-${Date.now()}`);
+
     return (
         <MapContainer
-            center={[51.505, -0.09]}
-            zoom={13}
+            key={mapKey}
+            center={[47.6062, -122.3321]}
+            zoom={9}
             scrollWheelZoom={true}
             className="w-full h-full z-0"
             zoomControl={false}
@@ -75,7 +90,15 @@ const Map = ({ pins, filterType }: MapProps) => {
                 url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             />
             <ZoomControl position="bottomright" />
-            <LocationController />
+            <LocationController onLocation={setUserLocation} />
+
+            {userLocation && (
+                <Marker position={userLocation} icon={createUserLocationIcon()}>
+                    <Popup className="custom-popup">
+                        <div className="font-bold text-sm">Your location</div>
+                    </Popup>
+                </Marker>
+            )}
 
             {pins.map((pin) => (
                 pin.type === filterType && (
@@ -87,6 +110,13 @@ const Map = ({ pins, filterType }: MapProps) => {
                         <Popup className="custom-popup">
                             <div className="font-bold text-sm">{pin.title}</div>
                             <div className="text-xs opacity-70">{pin.type}</div>
+                            <button
+                                type="button"
+                                onClick={() => onSelect(pin.id)}
+                                className="mt-2 inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(0,0,0,0.35)] transition-colors hover:bg-white/20"
+                            >
+                                View details
+                            </button>
                         </Popup>
                     </Marker>
                 )

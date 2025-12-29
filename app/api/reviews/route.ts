@@ -19,44 +19,7 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        // 1. Check Cache (Database) first
-        const { data: cachedReviews, error: dbError } = await supabase
-            .from('opportunity_reviews')
-            .select('*')
-            .eq('opportunity_id', opportunity_id)
-            .order('cached_at', { ascending: false });
-
-        if (dbError) {
-            console.error("Cache read error:", dbError);
-        }
-
-        const cached = cachedReviews || [];
-        debugInfo.cache_count = cached.length;
-
-        // If we have reviews in DB, return them (Cache Hit)
-        if (!force && cached.length > 0) {
-            return NextResponse.json({
-                source: 'CACHE',
-                reviews: cached,
-                ...(debug ? { debug: debugInfo } : {})
-            });
-        }
-
-        const updateReviewMeta = async (updates: Record<string, any>) => {
-            if (!opportunity_id) return;
-            const payload = { ...updates };
-            if (!payload.google_reviews_fetched_at) {
-                payload.google_reviews_fetched_at = new Date().toISOString();
-            }
-            const { error } = await supabase
-                .from('sales_opportunities')
-                .update(payload)
-                .eq('id', opportunity_id);
-
-            if (error) console.error("Review meta update error:", error);
-        };
-
-        // 2. Get the Opportunity details to know what to search for
+        // 1. Get the Opportunity details first (needed for stats and search info)
         const { data: opportunity } = await supabase
             .from('sales_opportunities')
             .select('title, address, google_place_id, google_reviews_fetched_at, google_reviews_status, google_reviews_count, google_rating, google_user_ratings_total')
@@ -78,13 +41,60 @@ export async function GET(req: NextRequest) {
             google_user_ratings_total: opportunity.google_user_ratings_total
         };
 
-        if (!force && cached.length === 0) {
+        // 2. Check Cache (Database)
+        const { data: cachedReviews, error: dbError } = await supabase
+            .from('opportunity_reviews')
+            .select('*')
+            .eq('opportunity_id', opportunity_id)
+            .order('cached_at', { ascending: false });
+
+        if (dbError) {
+            console.error("Cache read error:", dbError);
+        }
+
+        const cached = cachedReviews || [];
+        debugInfo.cache_count = cached.length;
+
+        // If we have reviews in DB, return them (Cache Hit) along with stats
+        if (!force && cached.length > 0) {
             return NextResponse.json({
-                source: 'CACHE_EMPTY',
-                reviews: [],
+                source: 'CACHE',
+                reviews: cached,
+                stats: {
+                    rating: opportunity.google_rating,
+                    count: opportunity.google_user_ratings_total
+                },
                 ...(debug ? { debug: debugInfo } : {})
             });
         }
+
+        if (!force && cached.length === 0) {
+            // Note: If cache is empty but we have an opportunity, we might want to try fetching unless we know it's zero
+            // For now, keeping original logic but respecting 'force'
+            return NextResponse.json({
+                source: 'CACHE_EMPTY',
+                reviews: [],
+                stats: {
+                    rating: opportunity.google_rating,
+                    count: opportunity.google_user_ratings_total
+                },
+                ...(debug ? { debug: debugInfo } : {})
+            });
+        }
+
+        const updateReviewMeta = async (updates: Record<string, any>) => {
+            if (!opportunity_id) return;
+            const payload = { ...updates };
+            if (!payload.google_reviews_fetched_at) {
+                payload.google_reviews_fetched_at = new Date().toISOString();
+            }
+            const { error } = await supabase
+                .from('sales_opportunities')
+                .update(payload)
+                .eq('id', opportunity_id);
+
+            if (error) console.error("Review meta update error:", error);
+        };
 
         // 3. If Cache Miss, we need to fetch from Google
         if (!GOOGLE_API_KEY) {
@@ -263,6 +273,10 @@ export async function GET(req: NextRequest) {
                 text: r.text,
                 original_date: r.relative_time_description
             })),
+            stats: {
+                rating: googleRating,
+                count: googleUserRatingsTotal
+            },
             ...(debug ? { debug: debugInfo } : {})
         });
 
