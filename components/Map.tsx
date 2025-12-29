@@ -1,128 +1,270 @@
-'use client';
+"use client";
 
-import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
-import 'leaflet-defaulticon-compatibility';
-import { divIcon } from 'leaflet';
-import React from 'react';
-import { MapPin } from 'lucide-react';
-import ReactDOMServer from 'react-dom/server';
+import React from "react";
+import {
+  Map as BaseMap,
+  MapControls,
+  MapMarker,
+  MarkerContent,
+  MarkerLabel,
+  MarkerPopup,
+} from "@/components/ui/map";
+import { Button } from "@/components/ui/button";
+import { Clock, ExternalLink, MapPin, Navigation, Star } from "lucide-react";
 
-interface LocationControllerProps {
-    onLocation: (coords: [number, number]) => void;
-}
-
-const LocationController = ({ onLocation }: LocationControllerProps) => {
-    React.useEffect(() => {
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const { latitude, longitude } = position.coords;
-                    onLocation([latitude, longitude]);
-                },
-                (error) => {
-                    console.error("Error getting location: ", error);
-                }
-            );
-        }
-    }, [onLocation]);
-
-    return null;
+type Pin = {
+  id: string | number;
+  lat: number;
+  lng: number;
+  type: "MARKET" | "CONSIGNMENT" | string;
+  title: string;
+  address?: string | null;
+  images?: string[] | null;
+  rating?: number | null;
+  ratingCount?: number | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  recurringPattern?: string | null;
+  businessHours?: Record<string, string> | string | null;
+  categories?: string[] | null;
+  tags?: string[] | null;
+  website?: string | null;
+  applicationLink?: string | null;
 };
 
 interface MapProps {
-    pins: Array<{
-        id: string | number;
-        lat: number;
-        lng: number;
-        type: 'MARKET' | 'CONSIGNMENT' | string;
-        title: string;
-    }>;
-    filterType: 'MARKET' | 'CONSIGNMENT';
-    onSelect: (id: string | number) => void;
+  pins: Pin[];
+  filterType: "MARKET" | "CONSIGNMENT";
+  onSelect: (id: string | number) => void;
 }
 
+const dayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+const formatTime = (value?: string | null) => {
+  if (!value) return "";
+  return value.slice(0, 5);
+};
+
+const formatTimeRange = (start?: string | null, end?: string | null) => {
+  const startValue = formatTime(start);
+  const endValue = formatTime(end);
+  if (startValue && endValue) return `${startValue} - ${endValue}`;
+  return startValue || endValue;
+};
+
+const normalizeBusinessHours = (
+  value?: Record<string, string> | string | null
+) => {
+  if (!value) return null;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === "object") {
+        return parsed as Record<string, string>;
+      }
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value === "object") return value;
+  return null;
+};
+
+const getHoursLabel = (pin: Pin) => {
+  const timeRange = formatTimeRange(pin.startTime, pin.endTime);
+  const scheduleLabel = [pin.recurringPattern, timeRange]
+    .filter(Boolean)
+    .join(" · ");
+  if (scheduleLabel) return scheduleLabel;
+
+  const businessHours = normalizeBusinessHours(pin.businessHours);
+  if (businessHours) {
+    const todayKey = dayKeys[new Date().getDay()];
+    const todayHours = businessHours[todayKey];
+    if (typeof todayHours === "string" && todayHours.trim()) {
+      return todayHours.replace("-", " - ");
+    }
+  }
+
+  return "Hours vary";
+};
+
+const buildDirectionsUrl = (address?: string | null) => {
+  if (!address) return null;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+    address
+  )}`;
+};
+
+const openExternal = (url?: string | null) => {
+  if (!url) return;
+  window.open(url, "_blank", "noopener,noreferrer");
+};
+
 const Map = ({ pins, filterType, onSelect }: MapProps) => {
-    const [userLocation, setUserLocation] = React.useState<[number, number] | null>(null);
+  const [userLocation, setUserLocation] = React.useState<
+    { latitude: number; longitude: number } | null
+  >(null);
 
-    // Custom icon generator
-    const createCustomIcon = (type: string) => {
-        const colorClass = type === 'MARKET' ? 'text-blue-500' : 'text-emerald-500';
+  React.useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ latitude, longitude });
+        },
+        (error) => {
+          console.error("Error getting location: ", error);
+        }
+      );
+    }
+  }, []);
 
-        // Render lucide icon to string
-        const iconHtml = ReactDOMServer.renderToString(
-            <div className={`p-2 rounded-full shadow-xl bg-white ${colorClass} transform hover:scale-110 transition-transform`}>
-                <MapPin size={24} fill="currentColor" />
-            </div>
-        );
+  const visiblePins = React.useMemo(
+    () => pins.filter((pin) => pin.type === filterType),
+    [pins, filterType]
+  );
 
-        return divIcon({
-            html: iconHtml,
-            className: 'custom-marker-icon', // Remove default leaflet styles
-            iconSize: [40, 40],
-            iconAnchor: [20, 20], // Center the icon
-        });
-    };
+  return (
+    <div className="h-full w-full">
+      <BaseMap
+        center={[-122.3321, 47.6062]}
+        zoom={9}
+        scrollZoom
+        attributionControl
+      >
+        <MapControls position="bottom-right" className="bottom-12" showZoom />
 
-    const createUserLocationIcon = () => {
-        return divIcon({
-            html: '<div style="width:14px;height:14px;background:#3b82f6;border:2px solid #ffffff;border-radius:50%;box-shadow:0 0 10px rgba(59,130,246,0.6);"></div>',
-            className: 'user-location-icon',
-            iconSize: [14, 14],
-            iconAnchor: [7, 7],
-        });
-    };
+        {userLocation && (
+          <MapMarker
+            longitude={userLocation.longitude}
+            latitude={userLocation.latitude}
+          >
+            <MarkerContent>
+              <div className="h-3 w-3 rounded-full border-2 border-white bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)]" />
+            </MarkerContent>
+            <MarkerPopup className="map-popup p-3">
+              <div className="text-sm font-semibold">Your location</div>
+            </MarkerPopup>
+          </MapMarker>
+        )}
 
-    const [mapKey] = React.useState(() => `map-${Date.now()}`);
+        {visiblePins.map((pin) => {
+          const colorClass =
+            pin.type === "MARKET" ? "text-blue-500" : "text-emerald-500";
+          const typeLabel =
+            pin.type === "MARKET"
+              ? "Market"
+              : pin.type === "CONSIGNMENT"
+              ? "Shop"
+              : pin.type;
+          const categoryLabel =
+            pin.categories?.[0] || pin.tags?.[0] || typeLabel;
+          const imageUrl = pin.images?.[0] || null;
+          const hoursLabel = getHoursLabel(pin);
+          const ratingValue =
+            typeof pin.rating === "number" ? pin.rating : null;
+          const ratingCount =
+            typeof pin.ratingCount === "number" ? pin.ratingCount : null;
+          const directionsUrl = buildDirectionsUrl(pin.address);
+          const websiteUrl = pin.website || pin.applicationLink || null;
+          const hasRating = typeof ratingValue === "number" && ratingValue > 0;
 
-    return (
-        <MapContainer
-            key={mapKey}
-            center={[47.6062, -122.3321]}
-            zoom={9}
-            scrollWheelZoom={true}
-            className="w-full h-full z-0"
-            zoomControl={false}
-        >
-            <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            />
-            <ZoomControl position="bottomright" />
-            <LocationController onLocation={setUserLocation} />
-
-            {userLocation && (
-                <Marker position={userLocation} icon={createUserLocationIcon()}>
-                    <Popup className="custom-popup">
-                        <div className="font-bold text-sm">Your location</div>
-                    </Popup>
-                </Marker>
-            )}
-
-            {pins.map((pin) => (
-                pin.type === filterType && (
-                    <Marker
-                        key={pin.id}
-                        position={[pin.lat, pin.lng]}
-                        icon={createCustomIcon(pin.type)}
+          return (
+            <MapMarker key={pin.id} longitude={pin.lng} latitude={pin.lat}>
+              <MarkerContent>
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-xl transition-transform hover:scale-110 ${colorClass}`}
+                >
+                  <MapPin size={20} fill="currentColor" />
+                </div>
+                <MarkerLabel position="bottom">{typeLabel}</MarkerLabel>
+              </MarkerContent>
+              <MarkerPopup className="map-popup w-72 p-0">
+                <div className="relative h-32 w-full overflow-hidden">
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={pin.title}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700">
+                      <MapPin className="h-6 w-6 text-white/60" />
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2 p-3">
+                  <div>
+                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {categoryLabel}
+                    </span>
+                    <h3 className="text-sm font-semibold leading-tight text-foreground">
+                      {pin.title}
+                    </h3>
+                    {pin.address && (
+                      <p className="text-xs text-muted-foreground">
+                        {pin.address}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <Star
+                      className={`h-3.5 w-3.5 ${
+                        hasRating
+                          ? "fill-amber-400 text-amber-400"
+                          : "text-white/30"
+                      }`}
+                    />
+                    <span className="font-medium text-foreground">
+                      {hasRating ? ratingValue.toFixed(1) : "--"}
+                    </span>
+                    <span className="text-muted-foreground">
+                      ({ratingCount ? ratingCount.toLocaleString() : "0"})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>{hoursLabel}</span>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      className="h-8 flex-1"
+                      onClick={() => openExternal(directionsUrl)}
+                      disabled={!directionsUrl}
                     >
-                        <Popup className="custom-popup">
-                            <div className="font-bold text-sm">{pin.title}</div>
-                            <div className="text-xs opacity-70">{pin.type}</div>
-                            <button
-                                type="button"
-                                onClick={() => onSelect(pin.id)}
-                                className="mt-2 inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(0,0,0,0.35)] transition-colors hover:bg-white/20"
-                            >
-                                View details
-                            </button>
-                        </Popup>
-                    </Marker>
-                )
-            ))}
-        </MapContainer>
-    );
+                      <Navigation className="mr-1.5 h-3.5 w-3.5" />
+                      Directions
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8"
+                      onClick={() => openExternal(websiteUrl)}
+                      disabled={!websiteUrl}
+                      aria-label="Open website"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8"
+                      onClick={() => onSelect(pin.id)}
+                    >
+                      Details
+                    </Button>
+                  </div>
+                </div>
+              </MarkerPopup>
+            </MapMarker>
+          );
+        })}
+      </BaseMap>
+    </div>
+  );
 };
 
 export default Map;

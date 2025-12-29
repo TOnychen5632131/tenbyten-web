@@ -17,13 +17,44 @@ type Opportunity = {
     title: string;
     latitude: number | string | null;
     longitude: number | string | null;
+    address?: string | null;
+    images?: string[] | null;
+    google_rating?: number | null;
+    google_user_ratings_total?: number | null;
     season_start_date?: string | null;
     season_end_date?: string | null;
     start_date?: string | null;
     end_date?: string | null;
+    start_time?: string | null;
+    end_time?: string | null;
     is_recurring?: boolean | null;
     recurring_pattern?: string | null;
     open_days?: Array<number | string> | null;
+    business_hours?: Record<string, string> | string | null;
+    categories?: string[] | null;
+    tags?: string[] | null;
+    website?: string | null;
+    application_link?: string | null;
+};
+
+type Pin = {
+    id: string | number;
+    lat: number;
+    lng: number;
+    type: 'MARKET' | 'CONSIGNMENT' | string;
+    title: string;
+    address?: string | null;
+    images?: string[] | null;
+    rating?: number | null;
+    ratingCount?: number | null;
+    startTime?: string | null;
+    endTime?: string | null;
+    recurringPattern?: string | null;
+    businessHours?: Record<string, string> | string | null;
+    categories?: string[] | null;
+    tags?: string[] | null;
+    website?: string | null;
+    applicationLink?: string | null;
 };
 
 const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -186,16 +217,36 @@ const MapContainer = () => {
             const lng = Number(item.longitude);
             if (!Number.isFinite(lat) || !Number.isFinite(lng)) return acc;
 
+            const ratingRaw = Number(item.google_rating);
+            const rating = Number.isFinite(ratingRaw) ? ratingRaw : null;
+            const ratingCountRaw = Number(item.google_user_ratings_total);
+            const ratingCount = Number.isFinite(ratingCountRaw) ? ratingCountRaw : null;
+            const images = Array.isArray(item.images)
+                ? item.images.filter((image) => typeof image === 'string' && image.trim().length > 0)
+                : [];
+
             acc.push({
                 id: item.id,
                 lat,
                 lng,
                 type: item.type,
-                title: item.title
+                title: item.title,
+                address: item.address ?? null,
+                images: images.length > 0 ? images : null,
+                rating,
+                ratingCount,
+                startTime: item.start_time ?? null,
+                endTime: item.end_time ?? null,
+                recurringPattern: item.recurring_pattern ?? null,
+                businessHours: item.business_hours ?? null,
+                categories: item.categories ?? null,
+                tags: item.tags ?? null,
+                website: item.website ?? null,
+                applicationLink: item.application_link ?? null
             });
 
             return acc;
-        }, [] as Array<{ id: string; lat: number; lng: number; type: 'MARKET' | 'CONSIGNMENT'; title: string }>);
+        }, [] as Pin[]);
     }, [items, selectedDate]);
 
     const handleSelectOpportunity = (id: string | number) => {

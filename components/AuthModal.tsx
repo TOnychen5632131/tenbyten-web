@@ -73,16 +73,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'l
         }
 
         try {
-            // 1. Verify Invite Code
-            const { data: codeData, error: codeError } = await supabase
-                .from('invite_codes')
-                .select('*')
-                .eq('code', inviteCode)
-                .eq('is_used', false)
-                .single();
+            // 1. Verify Invite Code (if provided)
+            let validCode = false;
 
-            if (codeError || !codeData) {
-                throw new Error('Invalid or used invite code.');
+            if (inviteCode.trim()) {
+                const { data: codeData, error: codeError } = await supabase
+                    .from('invite_codes')
+                    .select('*')
+                    .eq('code', inviteCode.trim())
+                    .eq('is_used', false)
+                    .single();
+
+                if (codeError || !codeData) {
+                    throw new Error('Invalid or used invite code.');
+                }
+                validCode = true;
             }
 
             // 2. Sign Up
@@ -95,11 +100,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'l
 
             if (authData.user) {
                 if (authData.session) {
-                    // 3. Mark invite code as used
-                    await supabase
-                        .from('invite_codes')
-                        .update({ is_used: true })
-                        .eq('code', inviteCode);
+                    // 3. Mark invite code as used (if one was provided and valid)
+                    if (validCode && inviteCode.trim()) {
+                        await supabase
+                            .from('invite_codes')
+                            .update({ is_used: true })
+                            .eq('code', inviteCode.trim());
+                    }
 
                     // 4. Redirect to onboarding
                     router.push('/onboarding');
@@ -145,10 +152,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'l
                         {/* Invite Code (Register Only) */}
                         {view === 'register' && (
                             <div className="space-y-1">
-                                <label className="text-xs font-mono text-white/50 uppercase tracking-widest">Invite Code</label>
+                                <label className="text-xs font-mono text-white/50 uppercase tracking-widest">Invite Code (Optional)</label>
                                 <input
                                     type="text"
-                                    required
                                     value={inviteCode}
                                     onChange={(e) => setInviteCode(e.target.value)}
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-white/30 transition-colors"

@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+    darkMode: "class",
     content: [
         "./pages/**/*.{js,ts,jsx,tsx,mdx}",
         "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -8,6 +9,16 @@ const config: Config = {
     ],
     theme: {
         extend: {
+            colors: {
+                background: "rgb(var(--background) / <alpha-value>)",
+                foreground: "rgb(var(--foreground) / <alpha-value>)",
+                popover: "rgb(var(--popover) / <alpha-value>)",
+                "popover-foreground": "rgb(var(--popover-foreground) / <alpha-value>)",
+                border: "rgb(var(--border) / <alpha-value>)",
+                "muted-foreground": "rgb(var(--muted-foreground) / <alpha-value>)",
+                accent: "rgb(var(--accent) / <alpha-value>)",
+                ring: "rgb(var(--ring) / <alpha-value>)",
+            },
             animation: {
                 'pulse-slow': 'pulse 3s infinite',
                 'fade-in': 'fadeIn 0.5s ease-out forwards',
