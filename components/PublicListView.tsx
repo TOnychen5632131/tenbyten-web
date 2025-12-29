@@ -203,17 +203,70 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                         </button>
 
                         <div className="flex gap-2">
-                            {[...Array(totalPages)].map((_, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => handlePageChange(i + 1)}
-                                    className={`w-10 h-10 flex items-center justify-center rounded-full text-sm font-bold transition-all border ${page === i + 1
-                                        ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-110'
-                                        : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10 hover:text-white'}`}
-                                >
-                                    {i + 1}
-                                </button>
-                            ))}
+                            {(() => {
+                                const visiblePages = [];
+                                const delta = 1; // Number of pages to show on each side of current page
+
+                                if (totalPages <= 7) {
+                                    // If detailed total pages are small, show all
+                                    for (let i = 1; i <= totalPages; i++) {
+                                        visiblePages.push(i);
+                                    }
+                                } else {
+                                    // Always show first page
+                                    visiblePages.push(1);
+
+                                    // Calculate range around current page
+                                    let start = Math.max(2, page - delta);
+                                    let end = Math.min(totalPages - 1, page + delta);
+
+                                    // Adjust range if close to ends
+                                    if (page <= 3) {
+                                        end = 4;
+                                        start = 2;
+                                    }
+                                    if (page >= totalPages - 2) {
+                                        start = totalPages - 3;
+                                        end = totalPages - 1;
+                                    }
+
+                                    // Add left ellipsis
+                                    if (start > 2) {
+                                        visiblePages.push(-1); // -1 represents ellipsis
+                                    }
+
+                                    // Add middle pages
+                                    for (let i = start; i <= end; i++) {
+                                        visiblePages.push(i);
+                                    }
+
+                                    // Add right ellipsis
+                                    if (end < totalPages - 1) {
+                                        visiblePages.push(-1); // -1 represents ellipsis
+                                    }
+
+                                    // Always show last page
+                                    visiblePages.push(totalPages);
+                                }
+
+                                return visiblePages.map((pageNum, idx) => (
+                                    pageNum === -1 ? (
+                                        <div key={`ellipsis-${idx}`} className="w-10 h-10 flex items-center justify-center text-white/50">
+                                            ...
+                                        </div>
+                                    ) : (
+                                        <button
+                                            key={pageNum}
+                                            onClick={() => handlePageChange(pageNum)}
+                                            className={`w-10 h-10 flex items-center justify-center rounded-full text-sm font-bold transition-all border ${page === pageNum
+                                                ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-110'
+                                                : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10 hover:text-white'}`}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    )
+                                ));
+                            })()}
                         </div>
 
                         <button
