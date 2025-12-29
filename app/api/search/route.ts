@@ -31,6 +31,9 @@ const VENDOR_TYPE_ALIASES = new Map<string, string>([
 
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const DEFAULT_RADIUS_KM = 50;
+const MAX_RADIUS_KM = 200;
+const EARTH_RADIUS_KM = 6371;
 
 const normalizeTagForCompare = (value: string) => {
     const normalized = value
@@ -72,6 +75,49 @@ const parseDate = (value?: string | null) => {
 
 const toDateOnly = (date: Date) => new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+const toNumber = (value: unknown) => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && value.trim()) {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+};
+
+const parseRadiusKm = (value: string | null) => {
+    if (!value) return DEFAULT_RADIUS_KM;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_RADIUS_KM;
+    return Math.min(parsed, MAX_RADIUS_KM);
+};
+
+const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2
+        + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return EARTH_RADIUS_KM * c;
+};
+
+const applyGeoFilter = (records: any[], geo: { lat: number; lng: number; radiusKm: number }) => {
+    const filtered = records.flatMap((record) => {
+        const lat = toNumber(record?.latitude);
+        const lng = toNumber(record?.longitude);
+        if (lat === null || lng === null) return [];
+        if (lat === 0 && lng === 0) return [];
+        const distanceKm = haversineKm(geo.lat, geo.lng, lat, lng);
+        if (distanceKm > geo.radiusKm) return [];
+        return [{
+            ...record,
+            distance_km: Math.round(distanceKm * 10) / 10
+        }];
+    });
+
+    return filtered.sort((a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0));
+};
 
 const rangeOverlaps = (startA: Date, endA: Date, startB: Date, endB: Date) => {
     return startA <= endB && endA >= startB;
@@ -450,6 +496,14 @@ const fetchFallbackConsignmentResults = async ({
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q');
+    const latParam = searchParams.get('lat');
+    const lngParam = searchParams.get('lng');
+    const radiusParam = searchParams.get('radius_km') || searchParams.get('radius');
+    const lat = toNumber(latParam);
+    const lng = toNumber(lngParam);
+    const geo = lat !== null && lng !== null
+        ? { lat, lng, radiusKm: parseRadiusKm(radiusParam) }
+        : null;
 
     if (!query) {
         return NextResponse.json({ results: [] });
@@ -633,7 +687,7 @@ Today is ${new Date().toISOString().split('T')[0]}.`
 
             const { data: baseDetails } = await supabase
                 .from('sales_opportunities')
-                .select('id, tags, address')
+                .select('id, tags, address, latitude, longitude')
                 .in('id', ids);
 
             const baseDetailsMap = new Map();
@@ -765,6 +819,10 @@ Today is ${new Date().toISOString().split('T')[0]}.`
                 });
                 results = Array.from(deduped.values());
             }
+        }
+
+        if (geo) {
+            results = applyGeoFilter(results, geo);
         }
 
 

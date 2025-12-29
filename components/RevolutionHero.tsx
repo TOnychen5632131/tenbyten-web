@@ -39,6 +39,8 @@ const RevolutionHero = () => {
     const [titleClickCount, setTitleClickCount] = useState(0);
     const [hasSearched, setHasSearched] = useState(false);
     const [lastSearchedQuery, setLastSearchedQuery] = useState('');
+    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [locationError, setLocationError] = useState<string | null>(null);
 
     const searchPlaceholders = [
         "Find a vintage market open on Sunday",
@@ -54,6 +56,22 @@ const RevolutionHero = () => {
         { label: "Food truck markets this week", query: "Food truck markets this week" },
         { label: "Community markets near me", query: "Community markets near me" }
     ];
+
+    const NEARBY_RADIUS_KM = 50;
+    const needsLocation = (text: string) => /near me|nearby|around me|附近|周边|离我/i.test(text);
+
+    const requestLocation = () =>
+        new Promise<{ lat: number; lng: number } | null>((resolve) => {
+            if (typeof navigator === 'undefined' || !navigator.geolocation) {
+                resolve(null);
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                () => resolve(null),
+                { enableHighAccuracy: false, timeout: 8000, maximumAge: 10 * 60 * 1000 }
+            );
+        });
 
     // Placeholder Carousel Effect
     React.useEffect(() => {
@@ -98,6 +116,7 @@ const RevolutionHero = () => {
             setHasSearched(false);
             setLastSearchedQuery('');
             setProgress(0);
+            setLocationError(null);
             return;
         }
 
@@ -106,6 +125,19 @@ const RevolutionHero = () => {
         setIsSearching(true);
         setResults([]); // Clear previous results immediately
         setProgress(0);
+        setLocationError(null);
+
+        let coords = userLocation;
+        if (needsLocation(queryToUse) && !coords) {
+            setSearchStatus("Requesting location access...");
+            coords = await requestLocation();
+            if (!coords) {
+                setIsSearching(false);
+                setLocationError("Location access is required to show nearby results.");
+                return;
+            }
+            setUserLocation(coords);
+        }
 
         // Start simulation and fetch in parallel
         const simulationPromise = runSearchSimulation();
@@ -113,7 +145,13 @@ const RevolutionHero = () => {
         // Actual Fetch
         const fetchPromise = (async () => {
             try {
-                const res = await fetch(`/api/search?q=${encodeURIComponent(queryToUse)}`);
+                const params = new URLSearchParams({ q: queryToUse });
+                if (coords) {
+                    params.set('lat', coords.lat.toString());
+                    params.set('lng', coords.lng.toString());
+                    params.set('radius_km', NEARBY_RADIUS_KM.toString());
+                }
+                const res = await fetch(`/api/search?${params.toString()}`);
                 const data = await res.json();
                 return data.results || [];
             } catch (e) {
@@ -150,6 +188,7 @@ const RevolutionHero = () => {
         setProgress(0);
         setHasSearched(false);
         setLastSearchedQuery('');
+        setLocationError(null);
     };
 
     return (
@@ -338,6 +377,11 @@ const RevolutionHero = () => {
                                     {lastSearchedQuery && (
                                         <div className="mt-2 text-white/60 text-sm md:text-base">
                                             "{lastSearchedQuery}"
+                                        </div>
+                                    )}
+                                    {locationError && (
+                                        <div className="mt-2 text-white/60 text-xs md:text-sm">
+                                            {locationError}
                                         </div>
                                     )}
                                     <div className="mt-3 text-white/50 text-xs md:text-sm">
