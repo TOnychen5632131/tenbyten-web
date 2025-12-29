@@ -117,7 +117,15 @@ const mergeTags = (a?: unknown, b?: unknown) => {
 
 const parseDate = (value?: string | null) => {
     if (!value || typeof value !== 'string') return null;
-    const parsed = new Date(value);
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        const [year, month, day] = trimmed.split('-').map(Number);
+        const utc = new Date(Date.UTC(year, month - 1, day));
+        if (Number.isNaN(utc.getTime())) return null;
+        return utc;
+    }
+    const parsed = new Date(trimmed);
     if (Number.isNaN(parsed.getTime())) return null;
     return parsed;
 };
@@ -421,29 +429,45 @@ const buildApplicationFilter = (
     };
 };
 
+const normalizeDateString = (value: unknown) => {
+    if (!value) return null;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return formatDate(value);
+    }
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) return null;
+        const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+        return match ? match[1] : null;
+    }
+    return null;
+};
+
 const applyApplicationFilter = (records: any[], filter: ApplicationFilter | null) => {
     if (!filter) return records;
     const { mode, rangeStart, rangeEnd } = filter;
+    const rangeStartStr = formatDate(rangeStart);
+    const rangeEndStr = formatDate(rangeEnd);
 
     return records.filter((record) => {
         const recordType = typeof record?.type === 'string' ? record.type : null;
         if (recordType && recordType !== 'MARKET') return false;
 
-        const start = parseDate(record?.application_start_date);
-        const end = parseDate(record?.application_end_date);
+        const startStr = normalizeDateString(record?.application_start_date);
+        const endStr = normalizeDateString(record?.application_end_date);
 
         if (mode === 'START') {
-            return Boolean(start) && start >= rangeStart && start <= rangeEnd;
+            return Boolean(startStr) && startStr >= rangeStartStr && startStr <= rangeEndStr;
         }
 
         if (mode === 'END') {
-            return Boolean(end) && end >= rangeStart && end <= rangeEnd;
+            return Boolean(endStr) && endStr >= rangeStartStr && endStr <= rangeEndStr;
         }
 
-        const resolvedStart = start || end;
-        const resolvedEnd = end || start;
+        const resolvedStart = startStr || endStr;
+        const resolvedEnd = endStr || startStr;
         if (!resolvedStart || !resolvedEnd) return false;
-        return rangeOverlaps(rangeStart, rangeEnd, resolvedStart, resolvedEnd);
+        return !(resolvedStart > rangeEndStr || resolvedEnd < rangeStartStr);
     });
 };
 
@@ -854,6 +878,7 @@ Today is ${new Date().toISOString().split('T')[0]}.`
         const applicationFilter = applicationMentioned
             ? buildApplicationFilter(applicationDateRange, applicationDateFilter)
             : null;
+        const fallbackKeywords = applicationFilter ? '' : keywords;
 
         // 2. Generate Embedding for the Keywords (or full query if no keywords)
         const textToEmbed = keywords
@@ -1005,7 +1030,7 @@ Today is ${new Date().toISOString().split('T')[0]}.`
                     dayIndex,
                     vendorTypes,
                     location,
-                    keywords,
+                    keywords: fallbackKeywords,
                     queryText: query
                 });
                 fallbackResults.push(...marketFallback);
@@ -1015,7 +1040,7 @@ Today is ${new Date().toISOString().split('T')[0]}.`
                 const consignmentFallback = await fetchFallbackConsignmentResults({
                     vendorTypes,
                     location,
-                    keywords,
+                    keywords: fallbackKeywords,
                     queryText: query
                 });
                 fallbackResults.push(...consignmentFallback);
