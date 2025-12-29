@@ -457,11 +457,11 @@ const applyApplicationFilter = (records: any[], filter: ApplicationFilter | null
         const endStr = normalizeDateString(record?.application_end_date);
 
         if (mode === 'START') {
-            return Boolean(startStr) && startStr >= rangeStartStr && startStr <= rangeEndStr;
+            return startStr !== null && startStr >= rangeStartStr && startStr <= rangeEndStr;
         }
 
         if (mode === 'END') {
-            return Boolean(endStr) && endStr >= rangeStartStr && endStr <= rangeEndStr;
+            return endStr !== null && endStr >= rangeStartStr && endStr <= rangeEndStr;
         }
 
         const resolvedStart = startStr || endStr;
