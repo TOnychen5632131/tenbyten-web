@@ -66,6 +66,7 @@ const RevolutionHero = () => {
     const [lastSearchedQuery, setLastSearchedQuery] = useState('');
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
+    const [mapSuggestion, setMapSuggestion] = useState<string | null>(null);
 
     const searchPlaceholders = [
         "Find a vintage market open on Sunday",
@@ -84,6 +85,7 @@ const RevolutionHero = () => {
 
     const NEARBY_RADIUS_KM = 50;
     const needsLocation = (text: string) => /near me|nearby|around me|附近|周边|离我/i.test(text);
+    const shouldSuggestMap = (text: string) => /community|社区/i.test(text) && needsLocation(text);
 
     const requestLocation = () =>
         new Promise<{ lat: number; lng: number } | null>((resolve) => {
@@ -142,6 +144,20 @@ const RevolutionHero = () => {
             setLastSearchedQuery('');
             setProgress(0);
             setLocationError(null);
+            setMapSuggestion(null);
+            return;
+        }
+
+        setMapSuggestion(null);
+        if (shouldSuggestMap(queryToUse)) {
+            setHasSearched(true);
+            setLastSearchedQuery(queryToUse);
+            setIsSearching(false);
+            setResults([]);
+            setProgress(0);
+            setSearchStatus('');
+            setLocationError(null);
+            setMapSuggestion("For nearby Community markets, the Map tab works best.");
             return;
         }
 
@@ -214,6 +230,7 @@ const RevolutionHero = () => {
         setHasSearched(false);
         setLastSearchedQuery('');
         setLocationError(null);
+        setMapSuggestion(null);
     };
 
     return (
@@ -402,33 +419,51 @@ const RevolutionHero = () => {
                         {results.length === 0 && !isSearching && hasSearched && (
                             <div className="w-full max-w-2xl mt-6 animate-fade-in">
                                 <div className="rounded-3xl border border-white/10 bg-black/40 backdrop-blur-2xl p-6 md:p-8 text-center">
-                                    <div className="text-white text-lg md:text-xl font-semibold tracking-tight">
-                                        No results found
-                                    </div>
-                                    {lastSearchedQuery && (
-                                        <div className="mt-2 text-white/60 text-sm md:text-base">
-                                            "{lastSearchedQuery}"
-                                        </div>
+                                    {mapSuggestion ? (
+                                        <>
+                                            <div className="text-white text-lg md:text-xl font-semibold tracking-tight">
+                                                {mapSuggestion}
+                                            </div>
+                                            <div className="mt-4">
+                                                <button
+                                                    onClick={() => handleTabChange('map')}
+                                                    className="px-4 py-2 rounded-full border border-white/30 bg-white/10 text-white/80 text-xs md:text-sm hover:bg-white/20 transition-colors"
+                                                >
+                                                    Open Map
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="text-white text-lg md:text-xl font-semibold tracking-tight">
+                                                No results found
+                                            </div>
+                                            {lastSearchedQuery && (
+                                                <div className="mt-2 text-white/60 text-sm md:text-base">
+                                                    "{lastSearchedQuery}"
+                                                </div>
+                                            )}
+                                            {locationError && (
+                                                <div className="mt-2 text-white/60 text-xs md:text-sm">
+                                                    {locationError}
+                                                </div>
+                                            )}
+                                            <div className="mt-3 text-white/50 text-xs md:text-sm">
+                                                Try searching by time, category, or location:
+                                            </div>
+                                            <div className="mt-4 flex flex-wrap justify-center gap-2">
+                                                {emptyStateSuggestions.map((suggestion) => (
+                                                    <button
+                                                        key={suggestion.query}
+                                                        onClick={() => handleSearch(suggestion.query)}
+                                                        className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-white/80 text-xs md:text-sm hover:bg-white/10 transition-colors"
+                                                    >
+                                                        {suggestion.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </>
                                     )}
-                                    {locationError && (
-                                        <div className="mt-2 text-white/60 text-xs md:text-sm">
-                                            {locationError}
-                                        </div>
-                                    )}
-                                    <div className="mt-3 text-white/50 text-xs md:text-sm">
-                                        Try searching by time, category, or location:
-                                    </div>
-                                    <div className="mt-4 flex flex-wrap justify-center gap-2">
-                                        {emptyStateSuggestions.map((suggestion) => (
-                                            <button
-                                                key={suggestion.query}
-                                                onClick={() => handleSearch(suggestion.query)}
-                                                className="px-4 py-2 rounded-full border border-white/20 bg-white/5 text-white/80 text-xs md:text-sm hover:bg-white/10 transition-colors"
-                                            >
-                                                {suggestion.label}
-                                            </button>
-                                        ))}
-                                    </div>
                                 </div>
                             </div>
                         )}

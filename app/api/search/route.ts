@@ -29,6 +29,63 @@ const VENDOR_TYPE_ALIASES = new Map<string, string>([
     ['nonprofit', 'Non-Profit']
 ]);
 
+const KEYWORD_STOPWORDS = new Set([
+    'a',
+    'an',
+    'the',
+    'of',
+    'to',
+    'for',
+    'in',
+    'on',
+    'at',
+    'by',
+    'from',
+    'with',
+    'without',
+    'and',
+    'or',
+    'is',
+    'are',
+    'be',
+    'been',
+    'i',
+    'me',
+    'my',
+    'we',
+    'us',
+    'you',
+    'your',
+    'our',
+    'can',
+    'join',
+    'find',
+    'show',
+    'list',
+    'need',
+    'want',
+    'looking',
+    'search',
+    'any',
+    'available',
+    'next',
+    'this',
+    'week',
+    'month',
+    'year',
+    'today',
+    'tomorrow',
+    'market',
+    'markets',
+    'consignment',
+    'shop',
+    'shops',
+    'store',
+    'stores',
+    'near',
+    'around'
+]);
+
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 type ApplicationFilterMode = 'START' | 'END' | 'WINDOW';
 type ApplicationFilter = {
@@ -375,19 +432,26 @@ const buildHeuristicInterpretation = (text: string) => {
 const buildKeywordTokens = (keywords: string, queryText: string) => {
     const raw = (keywords || queryText || '').trim();
     if (!raw) return { raw: '', tokens: [] as string[] };
+    const normalizeToken = (token: string) => {
+        const normalized = token.toLowerCase();
+        if (normalized.endsWith('s') && normalized.length > 3) {
+            return normalized.slice(0, -1);
+        }
+        return normalized;
+    };
     const tokens = raw
         .toLowerCase()
         .split(/[^a-z0-9\u4e00-\u9fff]+/)
-        .filter(Boolean);
+        .map(normalizeToken)
+        .filter(Boolean)
+        .filter((token) => !KEYWORD_STOPWORDS.has(token))
+        .filter((token) => !/^\d+$/.test(token));
     return { raw, tokens };
 };
 
 const matchesKeywordTokens = (haystack: string, tokens: string[], raw: string) => {
-    if (!raw) return true;
+    if (!raw || tokens.length === 0) return true;
     const lower = haystack.toLowerCase();
-    if (tokens.length === 0) {
-        return lower.includes(raw.toLowerCase());
-    }
     return tokens.some((token) => lower.includes(token));
 };
 
@@ -522,7 +586,51 @@ const fetchFallbackMarketResults = async ({
         marketDetails = data || [];
     }
 
-    if (marketDetails.length === 0) return [];
+    if (marketDetails.length === 0) {
+        const { data: baseFallback } = await supabase
+            .from('sales_opportunities')
+            .select('*')
+            .eq('type', 'MARKET')
+            .order('created_at', { ascending: false })
+            .limit(FALLBACK_MAX_RESULTS);
+
+        let results = baseFallback || [];
+        if (keywordRaw) {
+            results = results.filter((r: any) =>
+                matchesKeywordTokens(buildSearchableText(r), keywordTokens, keywordRaw)
+            );
+        }
+
+        if (vendorTypes.length > 0) {
+            const vendorTypeTokens = vendorTypes.map(normalizeTagForCompare);
+            results = results.filter((r: any) => {
+                const tags = Array.isArray(r.tags) ? r.tags : [];
+                const tagTokens = new Set(
+                    tags
+                        .filter((tag: unknown): tag is string => typeof tag === 'string')
+                        .map(normalizeTagForCompare)
+                        .filter(Boolean)
+                );
+                return vendorTypeTokens.some((token) => tagTokens.has(token));
+            });
+        }
+
+        if (location) {
+            const locationLower = location.toLowerCase();
+            results = results.filter((r: any) => {
+                const address = typeof r.address === 'string' ? r.address.toLowerCase() : '';
+                const title = typeof r.title === 'string' ? r.title.toLowerCase() : '';
+                return address.includes(locationLower) || title.includes(locationLower);
+            });
+        }
+
+        return results
+            .map((r: any) => ({
+                ...r,
+                similarity: typeof r.similarity === 'number' ? r.similarity : 0.68
+            }))
+            .slice(0, FALLBACK_MAX_RESULTS);
+    }
 
     let filteredMarkets = marketDetails;
     if (hasDateFilter || hasDayFilter) {
@@ -822,11 +930,10 @@ Today is ${new Date().toISOString().split('T')[0]}.`
             : (typeof vendorTypeMentionedRaw === 'string'
                 ? ['true', 'yes', '1'].includes(vendorTypeMentionedRaw.toLowerCase())
                 : false);
-        const vendorTypeMentioned = vendorTypeMentionedFromLLM
-            || vendorTypes.length > 0
-            || inferVendorTypeMentionFromText(query);
+        const vendorTypeMentionedByUser = inferVendorTypeMentionFromText(query) || vendorTypes.length > 0;
+        const vendorTypeMentioned = vendorTypeMentionedFromLLM || vendorTypeMentionedByUser;
 
-        if (vendorTypeMentioned && vendorTypes.length === 0) {
+        if (vendorTypeMentionedByUser && vendorTypes.length === 0) {
             return NextResponse.json({
                 results: [],
                 meta: { ...interpretation, vendorTypes, vendorTypeMentioned }
