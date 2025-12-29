@@ -156,8 +156,8 @@ const Map = ({ pins, filterType, onSelect }: MapProps) => {
             pin.type === "MARKET"
               ? "Market"
               : pin.type === "CONSIGNMENT"
-              ? "Shop"
-              : pin.type;
+                ? "Shop"
+                : pin.type;
           const categoryLabel =
             pin.categories?.[0] || pin.tags?.[0] || typeLabel;
           const imageUrl = pin.images?.[0] || null;
@@ -180,18 +180,16 @@ const Map = ({ pins, filterType, onSelect }: MapProps) => {
                 </div>
                 <MarkerLabel position="bottom">{typeLabel}</MarkerLabel>
               </MarkerContent>
-              <MarkerPopup className="map-popup w-72 p-0">
-                <div className="relative h-32 w-full overflow-hidden">
-                  {imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt={pin.title}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700">
-                      <MapPin className="h-6 w-6 text-white/60" />
+              <MarkerPopup className="map-popup w-72 p-0 border-none">
+                <div className="relative w-full overflow-hidden">
+                  {imageUrl && (
+                    <div className="h-32 w-full">
+                      <img
+                        src={imageUrl}
+                        alt={pin.title}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
                     </div>
                   )}
                 </div>
@@ -211,11 +209,10 @@ const Map = ({ pins, filterType, onSelect }: MapProps) => {
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <Star
-                      className={`h-3.5 w-3.5 ${
-                        hasRating
-                          ? "fill-amber-400 text-amber-400"
-                          : "text-white/30"
-                      }`}
+                      className={`h-3.5 w-3.5 ${hasRating
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-white/30"
+                        }`}
                     />
                     <span className="font-medium text-foreground">
                       {hasRating ? ratingValue.toFixed(1) : "--"}
@@ -238,16 +235,7 @@ const Map = ({ pins, filterType, onSelect }: MapProps) => {
                       <Navigation className="mr-1.5 h-3.5 w-3.5" />
                       Directions
                     </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8"
-                      onClick={() => openExternal(websiteUrl)}
-                      disabled={!websiteUrl}
-                      aria-label="Open website"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </Button>
+
                     <Button
                       size="sm"
                       variant="ghost"

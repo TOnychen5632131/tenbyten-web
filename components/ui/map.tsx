@@ -308,6 +308,7 @@ function MarkerPopup({
       offset: 16,
       ...popupOptions,
       closeButton: false,
+      className: "clean-popup",
     })
       .setMaxWidth("none")
       .setDOMContent(container);

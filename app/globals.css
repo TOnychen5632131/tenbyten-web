@@ -66,3 +66,15 @@ body {
   backdrop-filter: blur(18px);
   overflow: hidden;
 }
+
+/* Custom overrides for the map popup validation */
+.clean-popup .maplibregl-popup-content {
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.clean-popup .maplibregl-popup-tip {
+  display: none !important;
+}
