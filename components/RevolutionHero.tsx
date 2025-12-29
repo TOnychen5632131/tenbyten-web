@@ -9,12 +9,31 @@ import MapContainer from './MapContainer';
 import OpportunityDetail from './OpportunityDetail';
 import PublicListView from './PublicListView';
 import TrendingList from './TrendingList';
+import ProfileGateModal from './ProfileGateModal';
 
 const RevolutionHero = () => {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState('search');
-    const { user, loading } = useAuth(); // Import useAuth
+    const { user, profile, loading } = useAuth(); // Import useAuth
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // Local state if we want to trigger modal from here, or we can just block activeTab change
+    const [isProfileGateOpen, setIsProfileGateOpen] = useState(false);
+    const [hasPromptedProfile, setHasPromptedProfile] = useState(false);
+
+    const favoriteMarketCount = Array.isArray(profile?.top_markets)
+        ? profile.top_markets.filter((market: string) => String(market).trim() !== '').length
+        : 0;
+    const hasRequiredMarkets = favoriteMarketCount >= 3;
+    const needsProfileAccess = Boolean(user) && !loading && !hasRequiredMarkets;
+
+    React.useEffect(() => {
+        if (needsProfileAccess && !hasPromptedProfile) {
+            setIsProfileGateOpen(true);
+            setHasPromptedProfile(true);
+        }
+        if (!needsProfileAccess) {
+            setIsProfileGateOpen(false);
+        }
+    }, [needsProfileAccess, hasPromptedProfile]);
 
     // Intercept tab change
     const handleTabChange = (tab: string) => {
@@ -25,6 +44,12 @@ const RevolutionHero = () => {
             // Since Header has the modal, we might need a global state or event. 
             // For now, let's just create a local AuthModal instance here or use a simple alert.
             setIsAuthModalOpen(true);
+            return;
+        }
+        if ((tab === 'map' || tab === 'list') && (!hasRequiredMarkets || loading)) {
+            if (!loading) {
+                setIsProfileGateOpen(true);
+            }
             return;
         }
         setActiveTab(tab);
@@ -203,6 +228,12 @@ const RevolutionHero = () => {
 
             {/* Render AuthModal if needed locally, although Header has one too. Only one should be open. */}
             <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+            <ProfileGateModal
+                isOpen={isProfileGateOpen}
+                onClose={() => setIsProfileGateOpen(false)}
+                currentCount={favoriteMarketCount}
+                requiredCount={3}
+            />
 
             {/* SEARCH VIEW */}
             {activeTab === 'search' && (

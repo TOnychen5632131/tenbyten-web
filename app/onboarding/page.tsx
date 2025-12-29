@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/utils/supabase';
-import { Loader2, Upload, Plus, Trash2, Info } from 'lucide-react';
+import { Loader2, Upload, Plus, Trash2, Info, ShieldCheck } from 'lucide-react';
 
 export default function OnboardingPage() {
     const router = useRouter();
@@ -19,6 +19,8 @@ export default function OnboardingPage() {
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     // Start with 3 empty slots, or load from profile
     const [markets, setMarkets] = useState<string[]>(['', '', '']);
+    const [marketError, setMarketError] = useState('');
+    const minimumMarkets = 3;
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -35,10 +37,14 @@ export default function OnboardingPage() {
                 setAvatarPreview(profile.avatar_url);
             }
             if (profile.top_markets && profile.top_markets.length > 0) {
-                setMarkets(profile.top_markets);
+                const nextMarkets = [...profile.top_markets];
+                while (nextMarkets.length < minimumMarkets) {
+                    nextMarkets.push('');
+                }
+                setMarkets(nextMarkets);
             }
         }
-    }, [user, profile, authLoading, router]);
+    }, [user, profile, authLoading, router, minimumMarkets]);
 
     const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -52,6 +58,12 @@ export default function OnboardingPage() {
         const newMarkets = [...markets];
         newMarkets[index] = value;
         setMarkets(newMarkets);
+        if (marketError) {
+            const validCount = newMarkets.filter(m => m.trim() !== '').length;
+            if (validCount >= minimumMarkets) {
+                setMarketError('');
+            }
+        }
     };
 
     const addMarketSlot = () => {
@@ -59,8 +71,15 @@ export default function OnboardingPage() {
     };
 
     const removeMarketSlot = (index: number) => {
+        if (markets.length <= minimumMarkets) return;
         const newMarkets = markets.filter((_, i) => i !== index);
         setMarkets(newMarkets);
+        if (marketError) {
+            const validCount = newMarkets.filter(m => m.trim() !== '').length;
+            if (validCount >= minimumMarkets) {
+                setMarketError('');
+            }
+        }
     };
 
     const uploadAvatar = async (userId: string): Promise<string | null> => {
@@ -104,6 +123,11 @@ export default function OnboardingPage() {
             }
 
             const validMarkets = markets.filter(m => m.trim() !== '');
+            if (validMarkets.length < minimumMarkets) {
+                setMarketError(`Please add at least ${minimumMarkets} favorite markets to continue.`);
+                setSubmitting(false);
+                return;
+            }
 
             const { error } = await supabase
                 .from('vendor_profiles')
@@ -201,6 +225,13 @@ export default function OnboardingPage() {
                                     <strong className="text-emerald-300 ml-1">The more you add, the more precise the recommendations.</strong>
                                 </p>
                             </div>
+                            <div className="flex items-start gap-2 p-3 bg-blue-900/20 border border-blue-500/20 rounded-lg text-blue-200/80 text-sm">
+                                <ShieldCheck size={16} className="mt-0.5 shrink-0" />
+                                <p>
+                                    Please add at least {minimumMarkets} favorite markets. We review access to keep Tenbyten vendor-only.
+                                    <span className="text-blue-200 ml-1">Thanks for understanding.</span>
+                                </p>
+                            </div>
                         </div>
 
                         <div className="space-y-3">
@@ -215,10 +246,10 @@ export default function OnboardingPage() {
                                         onChange={(e) => handleMarketChange(index, e.target.value)}
                                         className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50 transition-colors placeholder:text-white/20"
                                         placeholder={index === 0 ? "Fremont Sunday Market" : "Another Market"}
-                                        required={index === 0}
+                                        required={index < minimumMarkets}
                                         autoFocus={index === markets.length - 1 && index > 2}
                                     />
-                                    {markets.length > 1 && (
+                                    {markets.length > minimumMarkets && (
                                         <button
                                             type="button"
                                             onClick={() => removeMarketSlot(index)}
@@ -230,6 +261,12 @@ export default function OnboardingPage() {
                                 </div>
                             ))}
                         </div>
+
+                        {marketError && (
+                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                                {marketError}
+                            </div>
+                        )}
 
                         <button
                             type="button"
