@@ -131,7 +131,7 @@ const Map = ({ pins, filterType, onSelect }: MapProps) => {
         center={[-122.3321, 47.6062]}
         zoom={9}
         scrollZoom
-        attributionControl
+
       >
         <MapControls position="bottom-right" className="bottom-12" showZoom />
 

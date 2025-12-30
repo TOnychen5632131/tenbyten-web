@@ -687,7 +687,9 @@ const fetchFallbackMarketResults = async ({
             ...detail,
             id: base?.id || detail?.opportunity_id,
             tags,
-            similarity: typeof base?.similarity === 'number' ? base.similarity : 0.75
+            similarity: typeof base?.similarity === 'number' ? base.similarity : 0.75,
+            rating: base?.google_rating ? Number(base.google_rating) : null,
+            ratingCount: base?.google_user_ratings_total ? Number(base.google_user_ratings_total) : null
         };
     });
 
@@ -761,7 +763,9 @@ const fetchFallbackConsignmentResults = async ({
             ...base,
             ...detail,
             tags,
-            similarity: typeof base?.similarity === 'number' ? base.similarity : 0.72
+            similarity: typeof base?.similarity === 'number' ? base.similarity : 0.72,
+            rating: base?.google_rating ? Number(base.google_rating) : null,
+            ratingCount: base?.google_user_ratings_total ? Number(base.google_user_ratings_total) : null
         };
     });
 
@@ -1024,7 +1028,7 @@ Today is ${new Date().toISOString().split('T')[0]}.`
 
             const { data: baseDetails } = await supabase
                 .from('sales_opportunities')
-                .select('id, tags, address, latitude, longitude')
+                .select('id, tags, address, latitude, longitude, google_rating, google_user_ratings_total')
                 .in('id', ids);
 
             const baseDetailsMap = new Map();
@@ -1052,7 +1056,12 @@ Today is ${new Date().toISOString().split('T')[0]}.`
                 // Merge detail into result
                 const merged = { ...baseDetail, ...r, ...detail };
                 const tags = mergeTags(baseDetail?.tags, detail?.tags);
-                return { ...merged, tags };
+                return {
+                    ...merged,
+                    tags,
+                    rating: baseDetail?.google_rating ? Number(baseDetail.google_rating) : null,
+                    ratingCount: baseDetail?.google_user_ratings_total ? Number(baseDetail.google_user_ratings_total) : null
+                };
             });
 
             if (intentType !== 'ANY') {
