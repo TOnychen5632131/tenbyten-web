@@ -30,7 +30,7 @@ const SupportInbox = () => {
     useEffect(() => {
         const fetchMessages = async () => {
             try {
-                const res = await fetch('/api/admin/support');
+                const res = await fetch('/api/admin/support', { cache: 'no-store' });
                 const json = await res.json();
                 if (!res.ok || json?.error) {
                     throw new Error(json?.error || 'Failed to fetch messages.');
