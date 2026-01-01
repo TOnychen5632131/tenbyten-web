@@ -11,6 +11,91 @@ import PublicListView from './PublicListView';
 import TrendingList from './TrendingList';
 import ProfileGateModal from './ProfileGateModal';
 
+const normalizeRating = (value: unknown) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+const normalizeRatingCount = (value: unknown) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+const SearchResultCard = ({ item, onSelect }: { item: any, onSelect: (item: any) => void }) => {
+    const [rating, setRating] = useState<number | null>(normalizeRating(item.rating));
+    const [ratingCount, setRatingCount] = useState<number | null>(normalizeRatingCount(item.ratingCount));
+
+    React.useEffect(() => {
+        const nextRating = normalizeRating(item.rating);
+        const nextCount = normalizeRatingCount(item.ratingCount);
+        if (nextRating !== null) setRating(nextRating);
+        if (nextCount !== null) setRatingCount(nextCount);
+    }, [item.rating, item.ratingCount]);
+
+    React.useEffect(() => {
+        if (!item?.id || rating !== null) return;
+
+        let isActive = true;
+        const opportunityId = encodeURIComponent(String(item.id));
+        fetch(`/api/reviews?opportunity_id=${opportunityId}&force=1&limit=1`)
+            .then((res) => res.json())
+            .then((data) => {
+                if (!isActive) return;
+                const nextRating = normalizeRating(data?.stats?.rating);
+                const nextCount = normalizeRatingCount(data?.stats?.count);
+                if (nextRating !== null) setRating(nextRating);
+                if (nextCount !== null) setRatingCount(nextCount);
+            })
+            .catch((err) => console.error('Failed to fetch rating for', item.title, err));
+
+        return () => {
+            isActive = false;
+        };
+    }, [item.id, rating, item.title]);
+
+    return (
+        <div
+            onClick={() => onSelect(item)}
+            className="group relative w-full p-[1px] rounded-3xl overflow-hidden transition-all duration-300 active:scale-[0.98] cursor-pointer"
+        >
+            {/* Glowing Border Gradient */}
+            <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r ${item.type === 'MARKET' ? 'from-blue-500 via-blue-400 to-blue-500' : 'from-emerald-500 via-teal-500 to-emerald-500'}`} />
+
+            {/* Glass Card Content */}
+            <div className="relative h-full bg-black/40 backdrop-blur-3xl rounded-[23px] p-5 border border-white/10 flex flex-col gap-3">
+                {/* Header Row */}
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="text-xl font-bold text-white tracking-tight">{item.title}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${item.type === 'MARKET' ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'}`}>
+                                {item.type}
+                            </span>
+                            <span className="text-white/40 text-xs flex items-center gap-1">
+                                {(item.similarity * 100).toFixed(0)}% Match
+                            </span>
+                            {rating !== null && (
+                                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 font-bold">
+                                    ★ {rating.toFixed(1)}
+                                    {ratingCount ? ` (${ratingCount.toLocaleString()})` : ''}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                        <ArrowRight size={16} className="text-white/50 -rotate-45" />
+                    </div>
+                </div>
+
+                {/* Description */}
+                <p className="text-white/70 text-sm leading-relaxed line-clamp-2">
+                    {item.description}
+                </p>
+            </div>
+        </div>
+    );
+};
+
 const RevolutionHero = () => {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState('search');
@@ -372,44 +457,11 @@ const RevolutionHero = () => {
                             <div className="w-full max-w-2xl animate-slide-up pb-32 h-full overflow-y-auto no-scrollbar z-[9999] relative mt-4">
                                 <div className="grid grid-cols-1 gap-4">
                                     {results.map((item: any) => (
-                                        <div
+                                        <SearchResultCard
                                             key={item.id}
-                                            onClick={() => setSelectedResult(item)}
-                                            className="group relative w-full p-[1px] rounded-3xl overflow-hidden transition-all duration-300 active:scale-[0.98] cursor-pointer"
-                                        >
-                                            {/* Glowing Border Gradient */}
-                                            <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r ${item.type === 'MARKET' ? 'from-blue-500 via-blue-400 to-blue-500' : 'from-emerald-500 via-teal-500 to-emerald-500'}`} />
-
-                                            {/* Glass Card Content */}
-                                            <div className="relative h-full bg-black/40 backdrop-blur-3xl rounded-[23px] p-5 border border-white/10 flex flex-col gap-3">
-                                                {/* Header Row */}
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h3 className="text-xl font-bold text-white tracking-tight">{item.title}</h3>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${item.type === 'MARKET' ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'}`}>
-                                                                {item.type}
-                                                            </span>
-                                                            <span className="text-white/40 text-xs flex items-center gap-1">
-                                                                {(item.similarity * 100).toFixed(0)}% Match
-                                                            </span>
-                                                            {/* Trust Score Badge */}
-                                                            <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 font-bold">
-                                                                ★ 9.2
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-                                                        <ArrowRight size={16} className="text-white/50 -rotate-45" />
-                                                    </div>
-                                                </div>
-
-                                                {/* Description */}
-                                                <p className="text-white/70 text-sm leading-relaxed line-clamp-2">
-                                                    {item.description}
-                                                </p>
-                                            </div>
-                                        </div>
+                                            item={item}
+                                            onSelect={setSelectedResult}
+                                        />
                                     ))}
                                 </div>
                             </div>
