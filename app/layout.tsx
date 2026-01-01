@@ -5,6 +5,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import Header from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import SupportWidget from "@/components/SupportWidget";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -39,6 +40,7 @@ export default function RootLayout({
           <AuthProvider>
             <Header />
             {children}
+            <SupportWidget />
           </AuthProvider>
         </ThemeProvider>
       </body>
