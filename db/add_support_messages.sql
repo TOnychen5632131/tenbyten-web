@@ -21,3 +21,6 @@ ALTER TABLE public.support_messages ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public can insert support messages" ON public.support_messages
     FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Public can read support messages" ON public.support_messages
+    FOR SELECT USING (true);
