@@ -28,29 +28,41 @@ const CalendarView: React.FC<CalendarViewProps> = ({ opportunities, onDateSelect
 
     const getMarketCountsForDate = (day: number) => {
         const targetDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+        targetDate.setHours(0, 0, 0, 0);
         const dayOfWeek = targetDate.getDay(); // 0 = Sunday
-        const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'long' });
 
         return opportunities.filter(opp => {
+            // Check if it's a fixed date event
+            if (!opp.recurring_pattern || opp.recurring_pattern === 'null') {
+                const startStr = opp.season_start_date || opp.start_date;
+                if (!startStr) return false;
+                const startDate = new Date(startStr);
+                startDate.setHours(0, 0, 0, 0);
+                return startDate.getTime() === targetDate.getTime();
+            }
+
+            // Recurring event logic
             if (opp.type !== 'MARKET') return false;
 
-            // Check season bounds if available
-            if (opp.season_start_date && new Date(opp.season_start_date) > targetDate) return false;
-            if (opp.season_end_date && new Date(opp.season_end_date) < targetDate) return false;
+            // Check season bounds
+            if (opp.season_start_date) {
+                const start = new Date(opp.season_start_date);
+                start.setHours(0, 0, 0, 0);
+                if (start > targetDate) return false;
+            }
+            if (opp.season_end_date) {
+                const end = new Date(opp.season_end_date);
+                end.setHours(0, 0, 0, 0);
+                if (end < targetDate) return false;
+            }
 
-            // Check recurrence pattern
-            // This is a basic implementation. Ideally, use a robust recurrence library.
             const pattern = (opp.recurring_pattern || '').toLowerCase();
 
-            if (pattern.includes('sunday') && dayOfWeek === 0) return true;
-            if (pattern.includes('monday') && dayOfWeek === 1) return true;
-            if (pattern.includes('tuesday') && dayOfWeek === 2) return true;
-            if (pattern.includes('wednesday') && dayOfWeek === 3) return true;
-            if (pattern.includes('thursday') && dayOfWeek === 4) return true;
-            if (pattern.includes('friday') && dayOfWeek === 5) return true;
-            if (pattern.includes('saturday') && dayOfWeek === 6) return true;
+            // Basic day name checks
+            const daysMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            if (pattern.includes(daysMap[dayOfWeek])) return true;
 
-            // Handle "Every day" or similar simple cases if needed
+            // Daily check
             if (pattern.includes('daily') || pattern.includes('every day')) return true;
 
             return false;
@@ -61,28 +73,63 @@ const CalendarView: React.FC<CalendarViewProps> = ({ opportunities, onDateSelect
         const days = [];
         const totalDays = daysInMonth(currentDate);
         const startDay = firstDayOfMonth(currentDate);
+        const monthName = currentDate.toLocaleString('default', { month: 'short' });
 
-        // Empty cells for previous month
+        // Empty cells for previous month padding
         for (let i = 0; i < startDay; i++) {
-            days.push(<div key={`empty-${i}`} className="h-24 bg-white/5 border border-white/5 opacity-50"></div>);
+            days.push(
+                <div key={`empty-${i}`} className="min-h-[60px] md:min-h-[100px] bg-white/5 border-b border-r border-white/5 opacity-30 flex flex-col justify-between p-2">
+                    {/* Placeholder */}
+                </div>
+            );
         }
 
         // Days of current month
         for (let i = 1; i <= totalDays; i++) {
             const count = getMarketCountsForDate(i);
+            const isToday = new Date().toDateString() === new Date(currentDate.getFullYear(), currentDate.getMonth(), i).toDateString();
+
             days.push(
                 <div
                     key={i}
-                    className={`h-24 border border-white/10 p-2 relative hover:bg-white/10 transition-colors cursor-pointer group`}
                     onClick={() => onDateSelect(new Date(currentDate.getFullYear(), currentDate.getMonth(), i))}
+                    className={`
+                        group relative min-h-[60px] md:min-h-[100px] border-b border-r border-white/10 
+                        p-1 md:p-2 flex flex-col items-center md:items-start justify-between 
+                        transition-all duration-200 cursor-pointer
+                        hover:bg-white/10 active:bg-white/20
+                        ${isToday ? 'bg-blue-500/10' : ''}
+                    `}
                 >
-                    <span className="text-white/60 text-sm font-mono">{i}</span>
+                    {/* Date Number */}
+                    <span className={`
+                        text-xs md:text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full
+                        ${isToday ? 'bg-blue-500 text-white' : 'text-white/60 group-hover:text-white'}
+                    `}>
+                        {i}
+                    </span>
+
+                    {/* Count Indicator */}
                     {count > 0 && (
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                            <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                                {count}
+                        <div className="flex-1 flex items-center justify-center w-full mt-1">
+                            <div className="flex flex-col items-center">
+                                {/* Number Badge */}
+                                <div className="
+                                    w-6 h-6 md:w-8 md:h-8 rounded-full 
+                                    bg-gradient-to-br from-blue-500 to-blue-600 
+                                    text-white text-[10px] md:text-xs font-bold 
+                                    flex items-center justify-center 
+                                    shadow-[0_2px_8px_rgba(59,130,246,0.4)]
+                                    border border-white/10
+                                    group-hover:scale-110 transition-transform duration-200
+                                ">
+                                    {count}
+                                </div>
+                                {/* Label only on Desktop */}
+                                <span className="hidden md:block text-[8px] text-blue-300/80 mt-1 uppercase tracking-wider font-semibold">
+                                    Markets
+                                </span>
                             </div>
-                            <div className="text-[10px] text-center text-blue-300 mt-1 font-medium">Markets</div>
                         </div>
                     )}
                 </div>
@@ -93,45 +140,56 @@ const CalendarView: React.FC<CalendarViewProps> = ({ opportunities, onDateSelect
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-[#111] rounded-3xl w-full max-w-4xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
+            <div
+                className="w-full max-w-lg md:max-w-4xl bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]"
+                onClick={(e) => e.stopPropagation()}
+            >
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-4">
-                        <button onClick={prevMonth} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                            <ChevronLeft />
-                        </button>
-                        {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                        <button onClick={nextMonth} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                            <ChevronRight />
-                        </button>
-                    </h2>
+                <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/10 bg-white/5">
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-lg md:text-2xl font-bold text-white tracking-tight">
+                            {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                        </h2>
+                        <div className="flex gap-1 bg-black/20 rounded-lg p-1 border border-white/5">
+                            <button onClick={prevMonth} className="p-1 hover:bg-white/10 rounded-md text-white/70 hover:text-white transition-colors">
+                                <ChevronLeft size={20} />
+                            </button>
+                            <button onClick={nextMonth} className="p-1 hover:bg-white/10 rounded-md text-white/70 hover:text-white transition-colors">
+                                <ChevronRight size={20} />
+                            </button>
+                        </div>
+                    </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-red-500/20 hover:text-red-400 rounded-full text-white/40 transition-colors"
+                        className="p-2 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-colors"
                     >
-                        <X size={24} />
+                        <X size={20} />
                     </button>
                 </div>
 
                 {/* Weekdays Header */}
-                <div className="grid grid-cols-7 bg-black/20 text-center py-2 border-b border-white/10">
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} className="text-white/40 text-xs font-bold uppercase tracking-wider">{day}</div>
+                <div className="grid grid-cols-7 bg-[#161616] border-b border-white/10">
+                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                        <div key={i} className="py-3 text-center text-[10px] md:text-xs font-bold text-white/40 uppercase tracking-widest">
+                            <span className="md:hidden">{day}</span>
+                            <span className="hidden md:inline">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}</span>
+                        </div>
                     ))}
                 </div>
 
-                {/* Grid */}
-                <div className="grid grid-cols-7 overflow-y-auto bg-black/40">
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 bg-[#0a0a0a] overflow-y-auto">
                     {renderDays()}
                 </div>
 
-                {/* Footer / Legend */}
-                <div className="p-4 bg-white/5 border-t border-white/10 text-xs text-white/40 flex justify-between">
-                    <span>Click a date to filter opportunities.</span>
-                    <span className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-500"></span> Active Market
-                    </span>
+                {/* Footer Legend */}
+                <div className="p-3 md:p-4 bg-white/5 border-t border-white/10 text-[10px] md:text-xs text-white/40 flex justify-between items-center">
+                    <span>Tap a date to see details</span>
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span>
+                        <span className="font-medium text-white/60">Active Market</span>
+                    </div>
                 </div>
             </div>
         </div>

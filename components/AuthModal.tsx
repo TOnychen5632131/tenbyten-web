@@ -11,7 +11,7 @@ interface AuthModalProps {
     initialView?: 'login' | 'register';
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'login' }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'register' }) => {
     const router = useRouter();
     const [view, setView] = useState<'login' | 'register'>(initialView);
     const [loading, setLoading] = useState(false);

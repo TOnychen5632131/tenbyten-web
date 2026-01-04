@@ -41,12 +41,12 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, className = ""
     };
 
     return (
-        <div className={`flex items-center gap-1 ${className}`}>
+        <div className={`flex flex-wrap items-center gap-1 w-full ${className}`}>
             <div className="relative">
                 <select
                     value={internal.hour}
                     onChange={(e) => updateTime({ hour: e.target.value })}
-                    className="appearance-none bg-black/20 border border-white/10 rounded-lg py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
+                    className="w-full min-w-[65px] appearance-none bg-black/20 border border-white/10 rounded-lg py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
                 >
                     {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
                         <option key={h} value={h}>{h}</option>
@@ -61,7 +61,7 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, className = ""
                 <select
                     value={internal.minute}
                     onChange={(e) => updateTime({ minute: e.target.value })}
-                    className="appearance-none bg-black/20 border border-white/10 rounded-lg py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
+                    className="w-full min-w-[55px] appearance-none bg-black/20 border border-white/10 rounded-lg py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
                 >
                     {['00', '15', '30', '45'].map(m => (
                         <option key={m} value={m}>{m}</option>
@@ -74,7 +74,7 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, className = ""
                 <select
                     value={internal.period}
                     onChange={(e) => updateTime({ period: e.target.value })}
-                    className={`appearance-none border border-white/10 rounded-lg py-2 pl-3 pr-8 text-sm font-bold focus:outline-none cursor-pointer ${internal.period === 'AM' ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' : 'bg-orange-500/10 text-orange-300 border-orange-500/30'
+                    className={`w-full min-w-[70px] appearance-none border border-white/10 rounded-lg py-2 pl-3 pr-8 text-sm font-bold focus:outline-none cursor-pointer ${internal.period === 'AM' ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' : 'bg-orange-500/10 text-orange-300 border-orange-500/30'
                         }`}
                 >
                     <option value="AM">AM</option>
