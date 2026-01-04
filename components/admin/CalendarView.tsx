@@ -98,13 +98,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ opportunities, onDateSelect
                         p-1 md:p-2 flex flex-col items-center md:items-start justify-between 
                         transition-all duration-200 cursor-pointer
                         hover:bg-white/10 active:bg-white/20
-                        ${isToday ? 'bg-blue-500/10' : ''}
+                        ${isToday ? 'bg-blue-500/5' : ''}
                     `}
                 >
                     {/* Date Number */}
                     <span className={`
-                        text-xs md:text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full
-                        ${isToday ? 'bg-blue-500 text-white' : 'text-white/60 group-hover:text-white'}
+                        text-xs md:text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full transition-all
+                        ${isToday ? 'border border-blue-500 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.2)]' : 'text-white/60 group-hover:text-white'}
                     `}>
                         {i}
                     </span>
@@ -142,7 +142,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ opportunities, onDateSelect
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
             <div
-                className="w-full max-w-lg md:max-w-4xl bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]"
+                className="w-full max-w-lg md:max-w-4xl bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -184,7 +184,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ opportunities, onDateSelect
                 </div>
 
                 {/* Footer Legend */}
-                <div className="p-3 md:p-4 bg-white/5 border-t border-white/10 text-[10px] md:text-xs text-white/40 flex justify-between items-center">
+                <div className="p-3 md:p-4 bg-white/5 border-t border-white/10 text-[10px] md:text-xs text-white/40 flex justify-between items-center pb-8 md:pb-4">
                     <span>Tap a date to see details</span>
                     <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span>
