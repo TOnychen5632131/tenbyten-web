@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Pencil, Trash2, Search, ChevronLeft, ChevronRight, CheckSquare, Square, RefreshCw, Link2 } from 'lucide-react';
+import { Pencil, Trash2, Search, ChevronLeft, ChevronRight, CheckSquare, Square, RefreshCw, Link2, Calendar } from 'lucide-react';
+import CalendarView from './CalendarView';
 
 interface OpportunityListProps {
     onEdit: (item: any) => void;
@@ -14,6 +15,7 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
     const [editingPlaceIdItem, setEditingPlaceIdItem] = useState<any | null>(null);
     const [placeIdInput, setPlaceIdInput] = useState('');
     const [savingPlaceId, setSavingPlaceId] = useState(false);
+    const [showCalendar, setShowCalendar] = useState(false);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -23,11 +25,13 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
 
     const [filterType, setFilterType] = useState<string>('ALL'); // ALL, MARKET, CONSIGNMENT
     const [year, setYear] = useState<number>(2026); // Default 2026
+    const [sortBy, setSortBy] = useState<string>('created_at');
+    const [sortOrder, setSortOrder] = useState<string>('desc');
 
     // Debounce/Auto-fetch currently only on filters/pagination, NOT search query
     useEffect(() => {
         fetchOpportunities();
-    }, [currentPage, filterType, itemsPerPage, year]); // Removed searchQuery from dependencies
+    }, [currentPage, filterType, itemsPerPage, year, sortBy, sortOrder]); // Removed searchQuery from dependencies
 
     const fetchOpportunities = async (overridePage?: number) => {
         setLoading(true);
@@ -40,7 +44,9 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
                 limit: itemsPerPage.toString(),
                 q: searchQuery,
                 type: filterType,
-                year: year.toString()
+                year: year.toString(),
+                sort_by: sortBy,
+                order: sortOrder
             });
 
             const res = await fetch(`/api/opportunities?${params.toString()}`);
@@ -205,10 +211,11 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
     return (
         <div className="w-full space-y-4">
             {/* Toolbar */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
-                <div className="flex items-center gap-2 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-64 flex gap-2">
-                        <div className="relative flex-1">
+            <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex flex-col gap-4">
+                {/* Search & Main Controls */}
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <div className="flex items-center gap-2 w-full md:w-auto flex-1">
+                        <div className="relative flex-1 md:max-w-md">
                             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
                             <input
                                 type="text"
@@ -221,43 +228,89 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
                         </div>
                         <button
                             onClick={handleSearchClick}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-colors"
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-colors whitespace-nowrap"
                         >
                             Search
                         </button>
                     </div>
-                    <select
-                        value={filterType}
-                        onChange={(e) => handleFilterChange(e.target.value)}
-                        className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white/80 focus:outline-none focus:border-blue-500/50"
-                    >
-                        <option value="ALL">All Types</option>
-                        <option value="MARKET">Markets</option>
-                        <option value="CONSIGNMENT">Shops</option>
-                    </select>
 
-                    <select
-                        value={year}
-                        onChange={(e) => handleYearChange(e.target.value)}
-                        className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white/80 focus:outline-none focus:border-blue-500/50"
-                    >
-                        <option value="2026">2026</option>
-                        <option value="2025">2025</option>
-                    </select>
+                    <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
+                        {/* Mobile Filter Toggle (Could be implemented if needed, but horizontal scroll works for now) */}
+
+                        <label className="flex items-center gap-2 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/60 whitespace-nowrap">
+                            <span className="uppercase font-bold text-[10px]">Type</span>
+                            <select
+                                value={filterType}
+                                onChange={(e) => handleFilterChange(e.target.value)}
+                                className="bg-transparent text-white font-medium focus:outline-none"
+                            >
+                                <option value="ALL">All</option>
+                                <option value="MARKET">Markets</option>
+                                <option value="CONSIGNMENT">Shops</option>
+                            </select>
+                        </label>
+
+                        <label className="flex items-center gap-2 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/60 whitespace-nowrap">
+                            <span className="uppercase font-bold text-[10px]">Year</span>
+                            <select
+                                value={year}
+                                onChange={(e) => handleYearChange(e.target.value)}
+                                className="bg-transparent text-white font-medium focus:outline-none"
+                            >
+                                <option value="2026">2026</option>
+                                <option value="2025">2025</option>
+                            </select>
+                        </label>
+
+                        <label className="flex items-center gap-2 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/60 whitespace-nowrap">
+                            <span className="uppercase font-bold text-[10px]">Sort</span>
+                            <select
+                                value={`${sortBy}-${sortOrder}`}
+                                onChange={(e) => {
+                                    const [newSort, newOrder] = e.target.value.split('-');
+                                    setSortBy(newSort);
+                                    setSortOrder(newOrder);
+                                    setCurrentPage(1);
+                                }}
+                                className="bg-transparent text-white font-medium focus:outline-none"
+                            >
+                                <option value="created_at-desc">Newest Added</option>
+                                <option value="season_start_date-asc">Event Date (Soonest)</option>
+                                <option value="season_start_date-desc">Event Date (Latest)</option>
+                                <option value="application_deadline-asc">Deadline (Soonest)</option>
+                                <option value="application_deadline-desc">Deadline (Latest)</option>
+                            </select>
+                        </label>
+                    </div>
                 </div>
 
-                {selectedIds.size > 0 && (
-                    <div className="flex items-center gap-2 animate-fade-in">
-                        <span className="text-sm text-white/60">{selectedIds.size} selected</span>
-                        <button
-                            onClick={handleBulkDelete}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 text-xs font-bold hover:bg-red-500/20 transition-colors"
-                        >
-                            <Trash2 size={14} />
-                            Delete Selected
-                        </button>
+                {/* Bulk Actions & Calendar Toggle */}
+                <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-1">
+                    <div className="flex items-center gap-2">
+                        {selectedIds.size > 0 ? (
+                            <div className="flex items-center gap-2 animate-fade-in">
+                                <span className="text-sm text-white/60">{selectedIds.size} selected</span>
+                                <button
+                                    onClick={handleBulkDelete}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 text-xs font-bold hover:bg-red-500/20 transition-colors"
+                                >
+                                    <Trash2 size={14} />
+                                    Delete Selected
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="text-xs text-white/20">Select items to bulk actions</div>
+                        )}
                     </div>
-                )}
+
+                    <button
+                        onClick={() => setShowCalendar(true)}
+                        className="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium"
+                    >
+                        <Calendar size={16} />
+                        <span className="hidden md:inline">View Calendar</span>
+                    </button>
+                </div>
             </div>
 
             {/* Data Table */}
@@ -385,6 +438,20 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Calendar Modal */}
+            {showCalendar && (
+                <CalendarView
+                    opportunities={opportunities}
+                    onDateSelect={(date) => {
+                        console.log('Selected date:', date);
+                        // Optional: Filter list by this date if desired
+                        // For now, just logging or maybe setting a filter state could be added later
+                        alert(`Selected date: ${date.toLocaleDateString()}`);
+                    }}
+                    onClose={() => setShowCalendar(false)}
+                />
+            )}
 
             {editingPlaceIdItem && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

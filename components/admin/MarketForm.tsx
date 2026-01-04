@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Calendar, MapPin, Clock, User, Flame } from 'lucide-react';
+import { Upload, Calendar, MapPin, Clock, User, Flame, Trash2 } from 'lucide-react';
+import TimePicker from './TimePicker';
 
 interface MarketFormProps {
     initialData?: any;
@@ -82,7 +83,8 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
         booth_size: '',
         application_deadline: '',
         vendor_count: '',
-        admission_fee: '',
+        admission_fee: '', // Legacy
+        admission_fees: [] as { label: string, price: string }[],
         website: '',
         is_trending: false,
         tags: '',
@@ -135,7 +137,8 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                 recurring_ordinal: initialData.recurring_pattern && initialData.recurring_pattern.includes('Monthly')
                     ? initialData.recurring_pattern.split(' ')[3] // "Monthly on the [3rd] Saturday"
                     : '1st',
-                organizer_name: initialData.organizer_name || ''
+                organizer_name: initialData.organizer_name || '',
+                admission_fees: initialData.admission_fees || (initialData.admission_fee ? [{ label: 'General', price: initialData.admission_fee }] : [])
             });
         }
     }, [initialData]);
@@ -224,7 +227,18 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
         if (type === 'checkbox') {
             setFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
         } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
+            setFormData(prev => {
+                const newData = { ...prev, [name]: value };
+
+                // Auto-sync End Date if Start Date changes
+                if (name === 'season_start_date') {
+                    // Only sync if end date is empty or was same as previous start date?
+                    // User requested: "SEASON START之后就把SEASON END改成通一天" -> Simply copy it.
+                    newData.season_end_date = value;
+                }
+
+                return newData;
+            });
         }
     };
 
@@ -305,13 +319,17 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                     </div>
                     <div>
                         <label className="block text-[10px] uppercase text-white/40 mb-1">Open Time</label>
-                        <input type="time" name="start_time" value={formData.start_time} onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" />
-                        <QuickSuggestion values={suggestions.start_time} onSelect={(val) => setFormData(prev => ({ ...prev, start_time: val }))} />
+                        <TimePicker
+                            value={formData.start_time}
+                            onChange={(val) => setFormData(prev => ({ ...prev, start_time: val }))}
+                        />
                     </div>
                     <div>
                         <label className="block text-[10px] uppercase text-white/40 mb-1">Close Time</label>
-                        <input type="time" name="end_time" value={formData.end_time} onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" />
-                        <QuickSuggestion values={suggestions.end_time} onSelect={(val) => setFormData(prev => ({ ...prev, end_time: val }))} />
+                        <TimePicker
+                            value={formData.end_time}
+                            onChange={(val) => setFormData(prev => ({ ...prev, end_time: val }))}
+                        />
                     </div>
                 </div>
 
@@ -450,19 +468,27 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                                     />
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-4 flex-wrap">
                                 <span className="text-[10px] text-white/40 uppercase">Hours:</span>
-                                <input type="time" value={schedule.start_time} onChange={(e) => {
-                                    const newSchedules = [...formData.additional_schedules];
-                                    newSchedules[idx].start_time = e.target.value;
-                                    setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
-                                }} className="bg-black/30 text-white text-xs p-1 rounded border border-white/10" />
+                                <TimePicker
+                                    value={schedule.start_time}
+                                    onChange={(val) => {
+                                        const newSchedules = [...formData.additional_schedules];
+                                        newSchedules[idx].start_time = val;
+                                        setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                    }}
+                                    className="scale-90 origin-left"
+                                />
                                 <span className="text-white/30">-</span>
-                                <input type="time" value={schedule.end_time} onChange={(e) => {
-                                    const newSchedules = [...formData.additional_schedules];
-                                    newSchedules[idx].end_time = e.target.value;
-                                    setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
-                                }} className="bg-black/30 text-white text-xs p-1 rounded border border-white/10" />
+                                <TimePicker
+                                    value={schedule.end_time}
+                                    onChange={(val) => {
+                                        const newSchedules = [...formData.additional_schedules];
+                                        newSchedules[idx].end_time = val;
+                                        setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                    }}
+                                    className="scale-90 origin-left"
+                                />
                             </div>
                             <div className="mt-2">
                                 <span className="text-[10px] text-white/40 uppercase mr-2">Day:</span>
@@ -515,8 +541,52 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                         <input name="booth_size" value={formData.booth_size} onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" placeholder="Booth Size (e.g. 10x10)" />
                         <QuickSuggestion values={suggestions.booth_size} onSelect={(val) => setFormData(prev => ({ ...prev, booth_size: val }))} />
                     </div>
-                    <div>
-                        <input name="admission_fee" value={formData.admission_fee} onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" placeholder="Admission Fee ($)" />
+                    <div className="md:col-span-1">
+                        <label className="block text-[10px] uppercase text-white/40 mb-2">Admission Fees</label>
+                        <div className="space-y-2">
+                            {(formData.admission_fees && formData.admission_fees.length > 0 ? formData.admission_fees : []).map((fee, idx) => (
+                                <div key={idx} className="flex gap-2 items-center">
+                                    <input
+                                        placeholder="Label (e.g. Adult)"
+                                        value={fee.label}
+                                        onChange={(e) => {
+                                            const newFees = [...(formData.admission_fees || [])];
+                                            newFees[idx].label = e.target.value;
+                                            setFormData(prev => ({ ...prev, admission_fees: newFees }));
+                                        }}
+                                        className="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-white text-xs"
+                                    />
+                                    <input
+                                        placeholder="$"
+                                        value={fee.price}
+                                        onChange={(e) => {
+                                            const newFees = [...(formData.admission_fees || [])];
+                                            newFees[idx].price = e.target.value;
+                                            setFormData(prev => ({ ...prev, admission_fees: newFees }));
+                                        }}
+                                        className="w-20 bg-black/20 border border-white/10 rounded-lg p-2 text-white text-xs text-right"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newFees = [...(formData.admission_fees || [])];
+                                            newFees.splice(idx, 1);
+                                            setFormData(prev => ({ ...prev, admission_fees: newFees }));
+                                        }}
+                                        className="text-white/20 hover:text-red-500"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, admission_fees: [...(prev.admission_fees || []), { label: '', price: '' }] }))}
+                                className="text-[10px] text-blue-400 font-bold hover:underline"
+                            >
+                                + Add Fee Tier
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <input name="vendor_count" value={formData.vendor_count} onChange={handleChange} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" placeholder="Vendor Count" />

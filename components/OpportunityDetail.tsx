@@ -334,6 +334,32 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                             </div>
                         </div>
 
+                        {/* Admission Fees */}
+                        {(data.admission_fees?.length > 0 || data.admission_fee) && (
+                            <div className="space-y-3 mb-8">
+                                <div className="bg-white/5 border border-white/5 rounded-2xl p-3">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <span className="text-white/60 text-sm pl-1">Admission</span>
+                                    </div>
+                                    <div className="space-y-1">
+                                        {data.admission_fees && data.admission_fees.length > 0 ? (
+                                            data.admission_fees.map((fee: any, idx: number) => (
+                                                <div key={idx} className="flex justify-between items-center bg-black/20 rounded-lg px-3 py-2">
+                                                    <span className="text-white text-sm">{fee.label}</span>
+                                                    <span className="text-white font-bold text-sm text-emerald-400">${fee.price}</span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="flex justify-between items-center bg-black/20 rounded-lg px-3 py-2">
+                                                <span className="text-white text-sm">General Admission</span>
+                                                <span className="text-white font-bold text-sm text-emerald-400">${data.admission_fee}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* About Event */}
                         <div className="mb-6">
                             <h3 className="text-white font-bold text-lg mb-2">About Event</h3>
