@@ -249,6 +249,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                                                 const today = new Date();
                                                 today.setHours(0, 0, 0, 0);
 
+                                                if (data.is_schedule_tba) return null;
                                                 if (!data.season_start_date && !data.start_date) return null;
 
                                                 const startStr = data.season_start_date || data.start_date;
@@ -312,6 +313,14 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                                                 // Fallback check if simple date match
                                                 return start >= today ? start : (today <= end ? today : null);
                                             };
+
+                                            if (item.is_schedule_tba) {
+                                                return (
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                                                        TBA
+                                                    </span>
+                                                );
+                                            }
 
                                             const nextDate = getNextOccurrence(item);
                                             if (!nextDate) return null;

@@ -377,18 +377,20 @@ export async function PUT(req: NextRequest) {
         // 2. Update details table
         let detailError;
         if (type === 'MARKET') {
+            const isScheduleTba = data.is_schedule_tba === true;
             const { error } = await supabase
                 .from('market_details')
                 .update({
                     // Update seasonal dates
-                    season_start_date: data.season_start_date || data.start_date || null,
-                    season_end_date: data.season_end_date || data.end_date || null,
+                    season_start_date: isScheduleTba ? null : (data.season_start_date || data.start_date || null),
+                    season_end_date: isScheduleTba ? null : (data.season_end_date || data.end_date || null),
                     // Keep start/end date for compatibility if needed, or just standard fields
-                    start_date: data.start_date || null,
-                    end_date: data.end_date || null,
+                    start_date: isScheduleTba ? null : (data.start_date || null),
+                    end_date: isScheduleTba ? null : (data.end_date || null),
 
-                    start_time: data.start_time || null,
-                    end_time: data.end_time || null,
+                    start_time: isScheduleTba ? null : (data.start_time || null),
+                    end_time: isScheduleTba ? null : (data.end_time || null),
+                    is_schedule_tba: isScheduleTba,
                     is_indoors: data.is_indoors,
                     electricity_access: data.electricity_access,
                     booth_size: data.booth_size || null,
@@ -397,13 +399,13 @@ export async function PUT(req: NextRequest) {
                     application_link: data.website || null,
                     organizer_name: data.organizer_name || null,
                     categories: data.categories || [], // Update categories
-                    is_recurring: data.is_recurring,
-                    recurring_pattern: data.recurring_pattern,
+                    is_recurring: isScheduleTba ? false : data.is_recurring,
+                    recurring_pattern: isScheduleTba ? null : data.recurring_pattern,
 
                     // New Fields
                     application_start_date: data.application_start_date || null,
                     application_end_date: data.application_end_date || null,
-                    additional_schedules: data.additional_schedules || []
+                    additional_schedules: isScheduleTba ? [] : (data.additional_schedules || [])
                 })
                 .eq('opportunity_id', id);
             detailError = error;
@@ -452,6 +454,7 @@ export async function POST(req: NextRequest) {
         console.log('Processing submission for:', type);
 
         const manualCoords = getManualCoords(data.latitude, data.longitude);
+        const isScheduleTba = data.is_schedule_tba === true;
         const geocodeQuery = [data.title, data.address].filter(Boolean).join(' ').trim();
         const geocodeResult = manualCoords ? null : await geocodeAddress(geocodeQuery);
 
@@ -487,10 +490,11 @@ export async function POST(req: NextRequest) {
                 .from('market_details')
                 .insert({
                     opportunity_id: opportunityId,
-                    season_start_date: data.season_start_date || data.start_date || null,
-                    season_end_date: data.season_end_date || data.end_date || null,
-                    start_time: data.start_time || null,
-                    end_time: data.end_time || null,
+                    season_start_date: isScheduleTba ? null : (data.season_start_date || data.start_date || null),
+                    season_end_date: isScheduleTba ? null : (data.season_end_date || data.end_date || null),
+                    start_time: isScheduleTba ? null : (data.start_time || null),
+                    end_time: isScheduleTba ? null : (data.end_time || null),
+                    is_schedule_tba: isScheduleTba,
                     is_indoors: data.is_indoors,
                     electricity_access: data.electricity_access,
                     booth_size: data.booth_size || null,
@@ -500,13 +504,13 @@ export async function POST(req: NextRequest) {
                     organizer_name: data.organizer_name || null,
 
                     categories: data.categories || [],
-                    is_recurring: data.is_recurring || false,
-                    recurring_pattern: data.recurring_pattern || null,
+                    is_recurring: isScheduleTba ? false : (data.is_recurring || false),
+                    recurring_pattern: isScheduleTba ? null : (data.recurring_pattern || null),
 
                     // New Fields
                     application_start_date: data.application_start_date || null,
                     application_end_date: data.application_end_date || null,
-                    additional_schedules: data.additional_schedules || []
+                    additional_schedules: isScheduleTba ? [] : (data.additional_schedules || [])
                 });
             detailError = error;
         } else if (type === 'CONSIGNMENT') {

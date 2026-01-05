@@ -27,6 +27,7 @@ type Opportunity = {
     end_date?: string | null;
     start_time?: string | null;
     end_time?: string | null;
+    is_schedule_tba?: boolean | null;
     is_recurring?: boolean | null;
     recurring_pattern?: string | null;
     open_days?: Array<number | string> | null;
@@ -50,6 +51,7 @@ type Pin = {
     startTime?: string | null;
     endTime?: string | null;
     recurringPattern?: string | null;
+    isScheduleTba?: boolean | null;
     businessHours?: Record<string, string> | string | null;
     categories?: string[] | null;
     tags?: string[] | null;
@@ -238,6 +240,7 @@ const MapContainer = () => {
                 startTime: item.start_time ?? null,
                 endTime: item.end_time ?? null,
                 recurringPattern: item.recurring_pattern ?? null,
+                isScheduleTba: item.is_schedule_tba ?? null,
                 businessHours: item.business_hours ?? null,
                 categories: item.categories ?? null,
                 tags: item.tags ?? null,

@@ -48,6 +48,7 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
         start_time: [] as string[],
         end_time: [] as string[]
     });
+    const isEditing = Boolean(initialData?.id);
 
     useEffect(() => {
         const fetchSuggestions = async () => {
@@ -75,6 +76,7 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
         season_end_date: '2026-12-31',
         start_time: '',
         end_time: '',
+        is_schedule_tba: false,
         application_start_date: '',
         application_end_date: '',
         additional_schedules: [] as ScheduleSegment[],
@@ -110,6 +112,7 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                 // Ensure time is in HH:MM format for input[type="time"]
                 start_time: initialData.start_time ? initialData.start_time.slice(0, 5) : '',
                 end_time: initialData.end_time ? initialData.end_time.slice(0, 5) : '',
+                is_schedule_tba: Boolean(initialData.is_schedule_tba),
                 // Application Period
                 application_start_date: initialData.application_start_date || '',
                 application_end_date: initialData.application_end_date || '',
@@ -143,28 +146,53 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
         }
     }, [initialData]);
 
+    useEffect(() => {
+        if (!formData.is_schedule_tba) return;
+        setFormData(prev => ({
+            ...prev,
+            season_start_date: '',
+            season_end_date: '',
+            start_time: '',
+            end_time: '',
+            is_recurring: false,
+            recurring_days: [],
+            additional_schedules: []
+        }));
+    }, [formData.is_schedule_tba]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const method = initialData ? 'PUT' : 'POST';
+            const method = isEditing ? 'PUT' : 'POST';
+            const isScheduleTba = formData.is_schedule_tba;
+            const isRecurring = !isScheduleTba && formData.is_recurring;
             const body = {
                 type: 'MARKET',
                 ...formData,
-                id: initialData?.id, // Include ID for updates
+                ...(isEditing ? { id: initialData?.id } : {}), // Include ID for updates
+                ...(isScheduleTba
+                    ? {
+                        season_start_date: '',
+                        season_end_date: '',
+                        start_time: '',
+                        end_time: '',
+                        additional_schedules: []
+                    }
+                    : {}),
                 // Split strings back to arrays
                 tags: formData.tags.split(',').map(s => s.trim()).filter(Boolean),
                 categories: (() => {
                     let cats = formData.categories.split(',').map(s => s.trim()).filter(Boolean);
-                    if (formData.is_recurring && formData.recurring_days.length > 0) {
+                    if (isRecurring && formData.recurring_days.length > 0) {
                         formData.recurring_days.forEach(day => {
                             if (!cats.includes(day)) cats.push(day);
                         });
                     }
                     return cats;
                 })(),
-                is_recurring: formData.is_recurring,
-                recurring_pattern: formData.is_recurring
+                is_recurring: isRecurring,
+                recurring_pattern: isRecurring
                     ? (formData.recurring_frequency === 'Weekly' && formData.recurring_days.length > 0
                         ? `Weekly on ${formData.recurring_days.join(', ')}`
                         : (formData.recurring_frequency === 'Monthly' && formData.recurring_days.length > 0
@@ -181,7 +209,7 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
             });
 
             if (res.ok) {
-                alert(`Market ${initialData ? 'updated' : 'saved'} successfully!`);
+                alert(`Market ${isEditing ? 'updated' : 'saved'} successfully!`);
                 if (onSuccess) onSuccess();
             } else {
                 const err = await res.json();
@@ -308,20 +336,49 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                     <Calendar size={16} className="text-blue-400" />
                     Date & Time
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="flex items-start gap-3 mb-4">
+                    <input
+                        type="checkbox"
+                        name="is_schedule_tba"
+                        checked={formData.is_schedule_tba}
+                        onChange={handleChange}
+                        className="w-4 h-4 mt-0.5 rounded text-amber-500"
+                    />
+                    <div>
+                        <div className="text-sm font-bold text-white">Date & time not announced (TBA)</div>
+                        <div className="text-[10px] text-white/40">Use when the market has not published the schedule yet (front-end will show TBA).</div>
+                    </div>
+                </div>
+
+                <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 ${formData.is_schedule_tba ? 'opacity-50 pointer-events-none' : ''}`}>
                     <div>
                         <label className="block text-[10px] uppercase text-white/40 mb-1">Season Start</label>
-                        <input type="date" name="season_start_date" value={formData.season_start_date} onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" />
+                        <input
+                            type="date"
+                            name="season_start_date"
+                            value={formData.season_start_date}
+                            onChange={handleChange}
+                            disabled={formData.is_schedule_tba}
+                            className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm disabled:cursor-not-allowed"
+                        />
                     </div>
                     <div>
                         <label className="block text-[10px] uppercase text-white/40 mb-1">Season End</label>
-                        <input type="date" name="season_end_date" value={formData.season_end_date} onChange={handleChange} className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" />
+                        <input
+                            type="date"
+                            name="season_end_date"
+                            value={formData.season_end_date}
+                            onChange={handleChange}
+                            disabled={formData.is_schedule_tba}
+                            className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm disabled:cursor-not-allowed"
+                        />
                     </div>
                     <div>
                         <label className="block text-[10px] uppercase text-white/40 mb-1">Open Time</label>
                         <TimePicker
                             value={formData.start_time}
                             onChange={(val) => setFormData(prev => ({ ...prev, start_time: val }))}
+                            disabled={formData.is_schedule_tba}
                         />
                     </div>
                     <div>
@@ -329,200 +386,205 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                         <TimePicker
                             value={formData.end_time}
                             onChange={(val) => setFormData(prev => ({ ...prev, end_time: val }))}
+                            disabled={formData.is_schedule_tba}
                         />
                     </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-white/5">
-                    <div className="flex items-center gap-3 mb-3">
-                        <input
-                            type="checkbox"
-                            name="is_recurring"
-                            checked={formData.is_recurring}
-                            onChange={handleChange}
-                            className="w-4 h-4 rounded text-blue-500"
-                        />
-                        <span className="text-sm font-bold text-white">Example: Recurring Weekly Event?</span>
-                    </div>
+                {!formData.is_schedule_tba && (
+                    <div className="mt-4 pt-4 border-t border-white/5">
+                        <div className="flex items-center gap-3 mb-3">
+                            <input
+                                type="checkbox"
+                                name="is_recurring"
+                                checked={formData.is_recurring}
+                                onChange={handleChange}
+                                className="w-4 h-4 rounded text-blue-500"
+                            />
+                            <span className="text-sm font-bold text-white">Example: Recurring Weekly Event?</span>
+                        </div>
 
-                    {formData.is_recurring && (
-                        <div className="animate-in fade-in slide-in-from-top-2">
-                            <div className="flex gap-4 mb-2">
-                                <div>
-                                    <label className="block text-[10px] uppercase text-white/40 mb-1">Frequency</label>
-                                    <select
-                                        name="recurring_frequency"
-                                        value={formData.recurring_frequency}
-                                        onChange={handleChange}
-                                        className="bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm"
-                                    >
-                                        <option value="Weekly">Weekly</option>
-                                        <option value="Monthly">Monthly</option>
-                                    </select>
-                                </div>
-                                {formData.recurring_frequency === 'Monthly' && (
+                        {formData.is_recurring && (
+                            <div className="animate-in fade-in slide-in-from-top-2">
+                                <div className="flex gap-4 mb-2">
                                     <div>
-                                        <label className="block text-[10px] uppercase text-white/40 mb-1">Ordinal</label>
+                                        <label className="block text-[10px] uppercase text-white/40 mb-1">Frequency</label>
                                         <select
-                                            name="recurring_ordinal"
-                                            value={formData.recurring_ordinal}
+                                            name="recurring_frequency"
+                                            value={formData.recurring_frequency}
                                             onChange={handleChange}
                                             className="bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm"
                                         >
-                                            <option value="1st">1st</option>
-                                            <option value="2nd">2nd</option>
-                                            <option value="3rd">3rd</option>
-                                            <option value="4th">4th</option>
-                                            <option value="Last">Last</option>
+                                            <option value="Weekly">Weekly</option>
+                                            <option value="Monthly">Monthly</option>
                                         </select>
                                     </div>
-                                )}
-                            </div>
+                                    {formData.recurring_frequency === 'Monthly' && (
+                                        <div>
+                                            <label className="block text-[10px] uppercase text-white/40 mb-1">Ordinal</label>
+                                            <select
+                                                name="recurring_ordinal"
+                                                value={formData.recurring_ordinal}
+                                                onChange={handleChange}
+                                                className="bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm"
+                                            >
+                                                <option value="1st">1st</option>
+                                                <option value="2nd">2nd</option>
+                                                <option value="3rd">3rd</option>
+                                                <option value="4th">4th</option>
+                                                <option value="Last">Last</option>
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
 
-                            <div>
-                                <label className="block text-[10px] uppercase text-white/40 mb-2">
-                                    {formData.recurring_frequency === 'Monthly' ? 'Day' : 'Day(s) of Week'}
-                                </label>
-                                <div className="flex flex-wrap gap-2">
+                                <div>
+                                    <label className="block text-[10px] uppercase text-white/40 mb-2">
+                                        {formData.recurring_frequency === 'Monthly' ? 'Day' : 'Day(s) of Week'}
+                                    </label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
+                                            <button
+                                                key={day}
+                                                type="button"
+                                                onClick={() => {
+                                                    if (formData.recurring_frequency === 'Monthly') {
+                                                        // Monthly only supports single day selection for simplicity
+                                                        setFormData(prev => ({ ...prev, recurring_days: [day] }));
+                                                    } else {
+                                                        toggleDay(day);
+                                                    }
+                                                }}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${formData.recurring_days.includes(day)
+                                                    ? 'bg-blue-600 text-white border-blue-500'
+                                                    : 'bg-black/30 text-white/50 border-white/10 hover:text-white'
+                                                    }`}
+                                            >
+                                                {day}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex items-end pt-2">
+                                    <span className="text-xs text-blue-400">
+                                        {formData.recurring_frequency === 'Monthly'
+                                            ? `* Result: Monthly on the ${formData.recurring_ordinal} ${formData.recurring_days[0] || '...'}`
+                                            : '* Will auto-add selected days to Categories'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+                {/* Advanced Schedule Config */}
+                {!formData.is_schedule_tba && (
+                    <div className="mt-8 border-t border-white/10 pt-6">
+                        <h4 className="text-sm font-bold text-white mb-4">Advanced Schedule (Exceptions / Seasonal Hours)</h4>
+
+                        {formData.additional_schedules.map((schedule, idx) => (
+                            <div key={idx} className="bg-black/20 p-4 rounded-xl mb-4 border border-white/5 relative">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const newSchedules = [...formData.additional_schedules];
+                                        newSchedules.splice(idx, 1);
+                                        setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                    }}
+                                    className="absolute top-2 right-2 text-white/20 hover:text-red-500"
+                                >
+                                    Remove
+                                </button>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+                                    <input
+                                        placeholder="Label (e.g. Peak Season)"
+                                        value={schedule.label}
+                                        onChange={(e) => {
+                                            const newSchedules = [...formData.additional_schedules];
+                                            newSchedules[idx].label = e.target.value;
+                                            setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                        }}
+                                        className="bg-transparent border-b border-white/10 text-white text-sm w-full py-1 outline-none focus:border-blue-500"
+                                    />
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="date"
+                                            value={schedule.start_date}
+                                            onChange={(e) => {
+                                                const newSchedules = [...formData.additional_schedules];
+                                                newSchedules[idx].start_date = e.target.value;
+                                                setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                            }}
+                                            className="bg-black/30 text-white text-xs p-1 rounded border border-white/10"
+                                        />
+                                        <span className="text-white/30 self-center">-</span>
+                                        <input
+                                            type="date"
+                                            value={schedule.end_date}
+                                            onChange={(e) => {
+                                                const newSchedules = [...formData.additional_schedules];
+                                                newSchedules[idx].end_date = e.target.value;
+                                                setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                            }}
+                                            className="bg-black/30 text-white text-xs p-1 rounded border border-white/10"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4 flex-wrap">
+                                    <span className="text-[10px] text-white/40 uppercase">Hours:</span>
+                                    <TimePicker
+                                        value={schedule.start_time}
+                                        onChange={(val) => {
+                                            const newSchedules = [...formData.additional_schedules];
+                                            newSchedules[idx].start_time = val;
+                                            setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                        }}
+                                        className="scale-90 origin-left"
+                                    />
+                                    <span className="text-white/30">-</span>
+                                    <TimePicker
+                                        value={schedule.end_time}
+                                        onChange={(val) => {
+                                            const newSchedules = [...formData.additional_schedules];
+                                            newSchedules[idx].end_time = val;
+                                            setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
+                                        }}
+                                        className="scale-90 origin-left"
+                                    />
+                                </div>
+                                <div className="mt-2">
+                                    <span className="text-[10px] text-white/40 uppercase mr-2">Day:</span>
                                     {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
                                         <button
                                             key={day}
                                             type="button"
                                             onClick={() => {
-                                                if (formData.recurring_frequency === 'Monthly') {
-                                                    // Monthly only supports single day selection for simplicity
-                                                    setFormData(prev => ({ ...prev, recurring_days: [day] }));
-                                                } else {
-                                                    toggleDay(day);
-                                                }
+                                                const newSchedules = [...formData.additional_schedules];
+                                                const currentDays = newSchedules[idx].days || [];
+                                                if (currentDays.includes(day)) newSchedules[idx].days = currentDays.filter(d => d !== day);
+                                                else newSchedules[idx].days = [...currentDays, day];
+                                                setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
                                             }}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${formData.recurring_days.includes(day)
-                                                ? 'bg-blue-600 text-white border-blue-500'
-                                                : 'bg-black/30 text-white/50 border-white/10 hover:text-white'
-                                                }`}
+                                            className={`px-2 py-0.5 mr-1 rounded text-[10px] border ${schedule.days && schedule.days.includes(day) ? 'bg-blue-500 border-blue-500 text-white' : 'bg-transparent border-white/10 text-white/40'}`}
                                         >
-                                            {day}
+                                            {day.slice(0, 3)}
                                         </button>
                                     ))}
                                 </div>
                             </div>
-                            <div className="flex items-end pt-2">
-                                <span className="text-xs text-blue-400">
-                                    {formData.recurring_frequency === 'Monthly'
-                                        ? `* Result: Monthly on the ${formData.recurring_ordinal} ${formData.recurring_days[0] || '...'}`
-                                        : '* Will auto-add selected days to Categories'}
-                                </span>
-                            </div>
-                        </div>
-                    )}
-                </div>
-                {/* Advanced Schedule Config */}
-                <div className="mt-8 border-t border-white/10 pt-6">
-                    <h4 className="text-sm font-bold text-white mb-4">Advanced Schedule (Exceptions / Seasonal Hours)</h4>
+                        ))}
 
-                    {formData.additional_schedules.map((schedule, idx) => (
-                        <div key={idx} className="bg-black/20 p-4 rounded-xl mb-4 border border-white/5 relative">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const newSchedules = [...formData.additional_schedules];
-                                    newSchedules.splice(idx, 1);
-                                    setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
-                                }}
-                                className="absolute top-2 right-2 text-white/20 hover:text-red-500"
-                            >
-                                Remove
-                            </button>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
-                                <input
-                                    placeholder="Label (e.g. Peak Season)"
-                                    value={schedule.label}
-                                    onChange={(e) => {
-                                        const newSchedules = [...formData.additional_schedules];
-                                        newSchedules[idx].label = e.target.value;
-                                        setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
-                                    }}
-                                    className="bg-transparent border-b border-white/10 text-white text-sm w-full py-1 outline-none focus:border-blue-500"
-                                />
-                                <div className="flex gap-2">
-                                    <input
-                                        type="date"
-                                        value={schedule.start_date}
-                                        onChange={(e) => {
-                                            const newSchedules = [...formData.additional_schedules];
-                                            newSchedules[idx].start_date = e.target.value;
-                                            setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
-                                        }}
-                                        className="bg-black/30 text-white text-xs p-1 rounded border border-white/10"
-                                    />
-                                    <span className="text-white/30 self-center">-</span>
-                                    <input
-                                        type="date"
-                                        value={schedule.end_date}
-                                        onChange={(e) => {
-                                            const newSchedules = [...formData.additional_schedules];
-                                            newSchedules[idx].end_date = e.target.value;
-                                            setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
-                                        }}
-                                        className="bg-black/30 text-white text-xs p-1 rounded border border-white/10"
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4 flex-wrap">
-                                <span className="text-[10px] text-white/40 uppercase">Hours:</span>
-                                <TimePicker
-                                    value={schedule.start_time}
-                                    onChange={(val) => {
-                                        const newSchedules = [...formData.additional_schedules];
-                                        newSchedules[idx].start_time = val;
-                                        setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
-                                    }}
-                                    className="scale-90 origin-left"
-                                />
-                                <span className="text-white/30">-</span>
-                                <TimePicker
-                                    value={schedule.end_time}
-                                    onChange={(val) => {
-                                        const newSchedules = [...formData.additional_schedules];
-                                        newSchedules[idx].end_time = val;
-                                        setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
-                                    }}
-                                    className="scale-90 origin-left"
-                                />
-                            </div>
-                            <div className="mt-2">
-                                <span className="text-[10px] text-white/40 uppercase mr-2">Day:</span>
-                                {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
-                                    <button
-                                        key={day}
-                                        type="button"
-                                        onClick={() => {
-                                            const newSchedules = [...formData.additional_schedules];
-                                            const currentDays = newSchedules[idx].days || [];
-                                            if (currentDays.includes(day)) newSchedules[idx].days = currentDays.filter(d => d !== day);
-                                            else newSchedules[idx].days = [...currentDays, day];
-                                            setFormData(prev => ({ ...prev, additional_schedules: newSchedules }));
-                                        }}
-                                        className={`px-2 py-0.5 mr-1 rounded text-[10px] border ${schedule.days && schedule.days.includes(day) ? 'bg-blue-500 border-blue-500 text-white' : 'bg-transparent border-white/10 text-white/40'}`}
-                                    >
-                                        {day.slice(0, 3)}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-
-                    <button
-                        type="button"
-                        onClick={() => setFormData(prev => ({
-                            ...prev,
-                            additional_schedules: [...prev.additional_schedules, { label: 'New Season', start_date: '', end_date: '', start_time: '', end_time: '', days: [] }]
-                        }))}
-                        className="text-xs text-blue-400 hover:text-blue-300 font-bold border border-blue-400/30 px-3 py-2 rounded-lg"
-                    >
-                        + Add Schedule Segment
-                    </button>
-                </div>
+                        <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({
+                                ...prev,
+                                additional_schedules: [...prev.additional_schedules, { label: 'New Season', start_date: '', end_date: '', start_time: '', end_time: '', days: [] }]
+                            }))}
+                            className="text-xs text-blue-400 hover:text-blue-300 font-bold border border-blue-400/30 px-3 py-2 rounded-lg"
+                        >
+                            + Add Schedule Segment
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Logistics */}
@@ -688,7 +750,7 @@ const MarketForm: React.FC<MarketFormProps> = ({ initialData, onSuccess }) => {
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-900/20 transition-all active:scale-[0.99] disabled:opacity-50"
             >
-                {loading ? 'Saving...' : (initialData ? 'Update Market' : 'Create Market Opportunity')}
+                {loading ? 'Saving...' : (isEditing ? 'Update Market' : 'Create Market Opportunity')}
             </button>
         </form >
     );

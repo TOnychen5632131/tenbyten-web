@@ -370,10 +370,12 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onEdit }) => {
                                     <td className="p-4">
                                         <div className="flex flex-col gap-1">
                                             <span className="text-xs text-white/70">
-                                                {(item.season_start_date)
+                                                {item.is_schedule_tba ? (
+                                                    <span className="text-amber-300">TBA</span>
+                                                ) : (item.season_start_date
                                                     ? new Date(item.season_start_date + 'T00:00:00').toLocaleDateString()
                                                     : <span className="text-emerald-400">Published</span>
-                                                }
+                                                )}
                                             </span>
                                         </div>
                                     </td>

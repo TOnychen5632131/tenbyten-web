@@ -78,7 +78,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ opportunities, onDateSelect
         // Empty cells for previous month padding
         for (let i = 0; i < startDay; i++) {
             days.push(
-                <div key={`empty-${i}`} className="min-h-[60px] md:min-h-[100px] bg-white/5 border-b border-r border-white/5 opacity-30 flex flex-col justify-between p-2">
+                <div key={`empty-${i}`} className="min-h-[40px] md:min-h-[60px] bg-white/5 border-b border-r border-white/5 opacity-30 flex flex-col justify-between p-1">
                     {/* Placeholder */}
                 </div>
             );
@@ -94,8 +94,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ opportunities, onDateSelect
                     key={i}
                     onClick={() => onDateSelect(new Date(currentDate.getFullYear(), currentDate.getMonth(), i))}
                     className={`
-                        group relative min-h-[60px] md:min-h-[100px] border-b border-r border-white/10 
-                        p-1 md:p-2 flex flex-col items-center md:items-start justify-between 
+                        group relative min-h-[40px] md:min-h-[60px] border-b border-r border-white/10 
+                        p-1 flex flex-col items-center md:items-start justify-between 
                         transition-all duration-200 cursor-pointer
                         hover:bg-white/10 active:bg-white/20
                         ${isToday ? 'bg-blue-500/5' : ''}
@@ -140,31 +140,31 @@ const CalendarView: React.FC<CalendarViewProps> = ({ opportunities, onDateSelect
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
             <div
-                className="w-full max-w-lg md:max-w-4xl bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+                className="w-full max-w-md bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/10 bg-white/5">
-                    <div className="flex items-center gap-4">
-                        <h2 className="text-lg md:text-2xl font-bold text-white tracking-tight">
+                <div className="flex items-center justify-between p-3 md:p-4 border-b border-white/10 bg-white/5">
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-base md:text-lg font-bold text-white tracking-tight">
                             {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                         </h2>
                         <div className="flex gap-1 bg-black/20 rounded-lg p-1 border border-white/5">
                             <button onClick={prevMonth} className="p-1 hover:bg-white/10 rounded-md text-white/70 hover:text-white transition-colors">
-                                <ChevronLeft size={20} />
+                                <ChevronLeft size={16} />
                             </button>
                             <button onClick={nextMonth} className="p-1 hover:bg-white/10 rounded-md text-white/70 hover:text-white transition-colors">
-                                <ChevronRight size={20} />
+                                <ChevronRight size={16} />
                             </button>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-colors"
                     >
-                        <X size={20} />
+                        <X size={18} />
                     </button>
                 </div>
 

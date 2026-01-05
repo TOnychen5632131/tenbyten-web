@@ -42,6 +42,7 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
 
     // Helper to calculate next occurrence
     const getNextOccurrence = () => {
+        if (data.is_schedule_tba) return null;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -119,6 +120,7 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
     };
 
     const nextDate = getNextOccurrence();
+    const scheduleTba = Boolean(data.is_schedule_tba);
 
     if (!data || !mounted) return null;
 
@@ -172,24 +174,26 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 mb-4">
                             <div className="w-14 h-14 rounded-xl bg-white/10 flex flex-col items-center justify-center shrink-0 border border-white/5">
                                 <span className="text-[10px] text-white/60 uppercase font-bold tracking-wider">
-                                    {nextDate ? nextDate.toLocaleDateString('en-US', { month: 'short' }) : 'END'}
+                                    {scheduleTba ? 'TBA' : (nextDate ? nextDate.toLocaleDateString('en-US', { month: 'short' }) : 'END')}
                                 </span>
                                 <span className="text-xl text-white font-bold leading-none mt-0.5">
-                                    {nextDate ? nextDate.getDate() : '--'}
+                                    {scheduleTba ? '--' : (nextDate ? nextDate.getDate() : '--')}
                                 </span>
                             </div>
                             <div>
                                 <div className="text-white font-medium text-sm">
-                                    {data.recurring_pattern ? (
+                                    {scheduleTba ? (
+                                        <span className="text-amber-300 font-bold">Schedule: TBA</span>
+                                    ) : (data.recurring_pattern ? (
                                         <span className="text-blue-300 font-bold">{data.recurring_pattern}</span>
                                     ) : (
                                         data.season_start_date ? (
                                             new Date(data.season_start_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
                                         ) : "See details for schedule"
-                                    )}
+                                    ))}
                                 </div>
 
-                                {(data.season_start_date || data.season_end_date) && (
+                                {!scheduleTba && (data.season_start_date || data.season_end_date) && (
                                     <div className="text-white/50 text-xs mt-0.5">
                                         Season: {data.season_start_date ? new Date(data.season_start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
                                         {data.season_end_date ? ` - ${new Date(data.season_end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
@@ -198,9 +202,15 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
 
                                 <div className="text-white/50 text-xs flex items-center gap-1 mt-0.5">
                                     <Calendar size={12} />
-                                    {data.start_time ? data.start_time.slice(0, 5) : ''}
-                                    {data.start_time && data.end_time ? ' - ' : ''}
-                                    {data.end_time ? data.end_time.slice(0, 5) : ''}
+                                    {scheduleTba
+                                        ? 'TBA'
+                                        : (
+                                            <>
+                                                {data.start_time ? data.start_time.slice(0, 5) : ''}
+                                                {data.start_time && data.end_time ? ' - ' : ''}
+                                                {data.end_time ? data.end_time.slice(0, 5) : ''}
+                                            </>
+                                        )}
                                 </div>
                             </div>
                         </div>

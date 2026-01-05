@@ -120,6 +120,7 @@ export async function GET() {
                     admission_fee: details.admission_fee,
                     is_indoors: details.is_indoors,
                     electricity_access: details.electricity_access,
+                    is_schedule_tba: details.is_schedule_tba || false,
                     booth_size: details.booth_size,
                     categories: details.categories,
                     weather_policy: details.weather_policy,

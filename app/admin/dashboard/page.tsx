@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Store, ShoppingBag, LogOut, Upload, FileJson, LayoutList, User, Database, Mail, MessageCircle } from 'lucide-react';
+import { Plus, Store, ShoppingBag, LogOut, Upload, FileJson, LayoutList, User, Database, Mail, MessageCircle, Sparkles } from 'lucide-react';
 import MarketForm from '@/components/admin/MarketForm';
 import ConsignmentForm from '@/components/admin/ConsignmentForm';
 import JsonImportForm from '@/components/admin/JsonImportForm';
+import MarketImportForm from '@/components/admin/MarketImportForm';
 import OpportunityList from '@/components/admin/OpportunityList';
 import UserList from '@/components/admin/UserList';
 import AdminDrawer from '@/components/admin/AdminDrawer';
@@ -19,6 +20,7 @@ const TABS = {
     MARKET: 'MARKET',
     CONSIGNMENT: 'CONSIGNMENT',
     IMPORT: 'IMPORT',
+    AI_IMPORT: 'AI_IMPORT',
     USERS: 'USERS',
     PARTNERSHIPS: 'PARTNERSHIPS',
     SUPPORT: 'SUPPORT'
@@ -151,6 +153,16 @@ const AdminDashboard = () => {
                         Import Data
                     </button>
                     <button
+                        onClick={() => handleTabChange(TABS.AI_IMPORT)}
+                        className={`text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === TABS.AI_IMPORT
+                            ? 'bg-white/10 text-white font-bold border border-white/10'
+                            : 'text-white/50 hover:bg-white/5 hover:text-white'
+                            }`}
+                    >
+                        <Sparkles size={20} />
+                        AI Import Market
+                    </button>
+                    <button
                         onClick={() => handleTabChange(TABS.USERS)}
                         className={`text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${activeTab === TABS.USERS
                             ? 'bg-white/10 text-white font-bold border border-white/10'
@@ -202,6 +214,7 @@ const AdminDashboard = () => {
                                 activeTab === TABS.USERS ? 'bg-pink-500' :
                             activeTab === TABS.PARTNERSHIPS ? 'bg-amber-500' :
                                 activeTab === TABS.SUPPORT ? 'bg-cyan-500' :
+                                activeTab === TABS.AI_IMPORT ? 'bg-amber-500' :
                                 activeTab === TABS.MANAGE ? 'bg-white' : 'bg-violet-500'}`}
                     />
 
@@ -238,6 +251,16 @@ const AdminDashboard = () => {
                                 Bulk Data Import
                             </h2>
                             <JsonImportForm />
+                        </div>
+                    )}
+
+                    {activeTab === TABS.AI_IMPORT && (
+                        <div className="animate-fade-in relative z-10 max-w-2xl mx-auto">
+                            <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
+                                <Sparkles size={24} className="text-amber-400" />
+                                AI Import Market
+                            </h2>
+                            <MarketImportForm onSuccess={() => setActiveTab(TABS.MANAGE)} />
                         </div>
                     )}
 

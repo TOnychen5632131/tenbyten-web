@@ -25,6 +25,7 @@ type Pin = {
   startTime?: string | null;
   endTime?: string | null;
   recurringPattern?: string | null;
+  isScheduleTba?: boolean | null;
   businessHours?: Record<string, string> | string | null;
   categories?: string[] | null;
   tags?: string[] | null;
@@ -71,6 +72,7 @@ const normalizeBusinessHours = (
 };
 
 const getHoursLabel = (pin: Pin) => {
+  if (pin.isScheduleTba) return "TBA";
   const timeRange = formatTimeRange(pin.startTime, pin.endTime);
   const scheduleLabel = [pin.recurringPattern, timeRange]
     .filter(Boolean)

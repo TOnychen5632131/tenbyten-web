@@ -142,20 +142,24 @@ export async function POST(request: NextRequest) {
                     start_time, end_time, is_recurring, recurring_pattern,
                     organizer_name, admission_fee, is_indoors, electricity_access, booth_size,
                     categories, weather_policy, application_link,
+                    is_schedule_tba,
                     season_start_date, season_end_date // New fields
                 } = market_details;
+                const isScheduleTba = is_schedule_tba === true;
 
                 const { error: mktError } = await supabase
                     .from('market_details')
                     .insert({
                         opportunity_id: oppId,
-                        start_time: normalizeTime(start_time),
-                        end_time: normalizeTime(end_time),
-                        is_recurring, recurring_pattern,
+                        start_time: isScheduleTba ? null : normalizeTime(start_time),
+                        end_time: isScheduleTba ? null : normalizeTime(end_time),
+                        is_schedule_tba: isScheduleTba,
+                        is_recurring: isScheduleTba ? false : is_recurring,
+                        recurring_pattern: isScheduleTba ? null : recurring_pattern,
                         organizer_name, admission_fee, is_indoors, electricity_access, booth_size,
                         categories, weather_policy, application_link,
-                        season_start_date: normalizeDate(season_start_date),
-                        season_end_date: normalizeDate(season_end_date)
+                        season_start_date: isScheduleTba ? null : normalizeDate(season_start_date),
+                        season_end_date: isScheduleTba ? null : normalizeDate(season_end_date)
                     });
 
                 if (mktError) {

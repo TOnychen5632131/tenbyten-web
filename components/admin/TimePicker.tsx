@@ -5,9 +5,10 @@ interface TimePickerProps {
     value: string; // HH:MM (24h)
     onChange: (value: string) => void;
     className?: string;
+    disabled?: boolean;
 }
 
-const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, className = "" }) => {
+const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, className = "", disabled }) => {
     // Parse 24h string to 12h parts
     const parseTime = (val: string) => {
         if (!val) return { hour: '12', minute: '00', period: 'AM' };
@@ -46,7 +47,8 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, className = ""
                 <select
                     value={internal.hour}
                     onChange={(e) => updateTime({ hour: e.target.value })}
-                    className="w-full min-w-[65px] appearance-none bg-black/20 border border-white/10 rounded-lg py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
+                    disabled={disabled}
+                    className="w-full min-w-[65px] appearance-none bg-black/20 border border-white/10 rounded-lg py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
                         <option key={h} value={h}>{h}</option>
@@ -61,7 +63,8 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, className = ""
                 <select
                     value={internal.minute}
                     onChange={(e) => updateTime({ minute: e.target.value })}
-                    className="w-full min-w-[55px] appearance-none bg-black/20 border border-white/10 rounded-lg py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
+                    disabled={disabled}
+                    className="w-full min-w-[55px] appearance-none bg-black/20 border border-white/10 rounded-lg py-2 pl-3 pr-8 text-white text-sm focus:outline-none focus:border-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {['00', '15', '30', '45'].map(m => (
                         <option key={m} value={m}>{m}</option>
@@ -74,7 +77,8 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, className = ""
                 <select
                     value={internal.period}
                     onChange={(e) => updateTime({ period: e.target.value })}
-                    className={`w-full min-w-[70px] appearance-none border border-white/10 rounded-lg py-2 pl-3 pr-8 text-sm font-bold focus:outline-none cursor-pointer ${internal.period === 'AM' ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' : 'bg-orange-500/10 text-orange-300 border-orange-500/30'
+                    disabled={disabled}
+                    className={`w-full min-w-[70px] appearance-none border border-white/10 rounded-lg py-2 pl-3 pr-8 text-sm font-bold focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${internal.period === 'AM' ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' : 'bg-orange-500/10 text-orange-300 border-orange-500/30'
                         }`}
                 >
                     <option value="AM">AM</option>
