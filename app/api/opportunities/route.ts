@@ -128,11 +128,15 @@ export async function GET(req: NextRequest) {
                     const yearStart = `${year}-01-01`;
                     const yearEnd = `${year}-12-31`;
                     if (year === '2025') {
-                        // Complex 2025 logic (nulls or 2025) - simplifying for sort to just 2025 range for now to avoid massive complexity
-                        // or fetching all and filtering in memory if dataset small, but let's stick to standard range
-                        mktQuery = mktQuery.or(`season_start_date.is.null,season_start_date.gte.${yearStart},season_start_date.lte.${yearEnd}`);
+                        // Include TBA and null legacy records for 2025 while keeping the year range.
+                        mktQuery = mktQuery.or(
+                            `and(season_start_date.gte.${yearStart},season_start_date.lte.${yearEnd}),season_start_date.is.null,is_schedule_tba.eq.true`
+                        );
                     } else {
-                        mktQuery = mktQuery.gte('season_start_date', yearStart).lte('season_start_date', yearEnd);
+                        // Include TBA items alongside the year range.
+                        mktQuery = mktQuery.or(
+                            `and(season_start_date.gte.${yearStart},season_start_date.lte.${yearEnd}),is_schedule_tba.eq.true`
+                        );
                     }
                 }
 
@@ -182,15 +186,12 @@ export async function GET(req: NextRequest) {
             } else {
                 // Standard Year Filter (only if not already handled by orderedIds)
                 if (year) {
-                    // ... (Keep existing complex year logic from previous version if needed, or simplify)
-                    // For brevity in this diff, assuming year filter is handled either by orderedIds OR here.
-                    // A cleaner way: If not sorting by market fields, we still filter by year via market_details lookup
-                    // Reuse the logic from before?
-                    // Let's copy the logic from the previous file for Year filtering if orderedIds is null
                     const yearStart = `${year}-01-01`;
                     const yearEnd = `${year}-12-31`;
-                    // ... (simplified for this context: fetch IDs)
-                    const { data: mktIds } = await supabase.from('market_details').select('opportunity_id').gte('season_start_date', yearStart).lte('season_start_date', yearEnd);
+                    const { data: mktIds } = await supabase
+                        .from('market_details')
+                        .select('opportunity_id')
+                        .or(`and(season_start_date.gte.${yearStart},season_start_date.lte.${yearEnd}),is_schedule_tba.eq.true`);
                     if (mktIds) {
                         const ids = mktIds.map(m => m.opportunity_id);
                         if (ids.length > 0) supabaseQuery = supabaseQuery.in('id', ids);

@@ -56,6 +56,22 @@ type AdmissionFee = {
     price: number | null;
 };
 
+type FileLike = {
+    arrayBuffer: () => Promise<ArrayBuffer>;
+    size: number;
+    type?: string;
+};
+
+const isFileLike = (value: unknown): value is FileLike => {
+    if (!value || typeof value !== 'object') return false;
+    return (
+        'arrayBuffer' in value
+        && typeof (value as FileLike).arrayBuffer === 'function'
+        && 'size' in value
+        && typeof (value as FileLike).size === 'number'
+    );
+};
+
 type ParsedMarket = {
     title: string | null;
     description: string | null;
@@ -186,7 +202,7 @@ export async function POST(req: NextRequest) {
             text = typeof textValue === 'string' ? textValue : '';
             sourceUrl = typeof urlValue === 'string' ? urlValue : '';
 
-            if (screenshotValue && typeof screenshotValue !== 'string' && screenshotValue.size > 0) {
+            if (isFileLike(screenshotValue) && screenshotValue.size > 0) {
                 if (screenshotValue.size > 6_000_000) {
                     return NextResponse.json({ success: false, error: 'Screenshot is too large.' }, { status: 413 });
                 }
