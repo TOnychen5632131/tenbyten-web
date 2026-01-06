@@ -3,6 +3,17 @@
 @tailwind utilities;
 
 :root {
+  --background: 248 248 250;
+  --foreground: 20 20 23;
+  --popover: 255 255 255;
+  --popover-foreground: 20 20 23;
+  --border: 216 218 222;
+  --muted-foreground: 100 116 139;
+  --accent: 20 20 23;
+  --ring: 20 20 23;
+}
+
+.dark {
   --background: 0 0 0;
   --foreground: 255 255 255;
   --popover: 15 15 18;

@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Star, ArrowUpRight, ChevronDown, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, ArrowUpRight, ChevronDown, Calendar, X } from 'lucide-react';
 import CalendarView from './admin/CalendarView';
 
 interface PublicListViewProps {
@@ -28,6 +28,43 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
     ];
 
     const [calendarItems, setCalendarItems] = useState<any[]>([]);
+    const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
+    const [selectedCalendarItems, setSelectedCalendarItems] = useState<any[]>([]);
+    const [showDateList, setShowDateList] = useState(false);
+
+    const isOpportunityOnCalendarDate = (opp: any, date: Date) => {
+        const targetDate = new Date(date);
+        targetDate.setHours(0, 0, 0, 0);
+        const dayOfWeek = targetDate.getDay(); // 0 = Sunday
+
+        if (!opp.recurring_pattern || opp.recurring_pattern === 'null') {
+            const startStr = opp.season_start_date || opp.start_date;
+            if (!startStr) return false;
+            const startDate = new Date(startStr);
+            startDate.setHours(0, 0, 0, 0);
+            return startDate.getTime() === targetDate.getTime();
+        }
+
+        if (opp.type !== 'MARKET') return false;
+
+        if (opp.season_start_date) {
+            const start = new Date(opp.season_start_date);
+            start.setHours(0, 0, 0, 0);
+            if (start > targetDate) return false;
+        }
+        if (opp.season_end_date) {
+            const end = new Date(opp.season_end_date);
+            end.setHours(0, 0, 0, 0);
+            if (end < targetDate) return false;
+        }
+
+        const pattern = (opp.recurring_pattern || '').toLowerCase();
+        const daysMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        if (pattern.includes(daysMap[dayOfWeek])) return true;
+        if (pattern.includes('daily') || pattern.includes('every day')) return true;
+
+        return false;
+    };
 
     useEffect(() => {
         if (showCalendar && calendarItems.length === 0) {
@@ -472,10 +509,93 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                 <CalendarView
                     opportunities={calendarItems.length > 0 ? calendarItems : items}
                     onDateSelect={(date) => {
-                        // Optional: Handle date selection
+                        const sourceItems = calendarItems.length > 0 ? calendarItems : items;
+                        const matches = sourceItems.filter((opp) => isOpportunityOnCalendarDate(opp, date));
+                        setSelectedCalendarDate(date);
+                        setSelectedCalendarItems(matches);
+                        setShowDateList(true);
                     }}
-                    onClose={() => setShowCalendar(false)}
+                    onClose={() => {
+                        setShowCalendar(false);
+                        setShowDateList(false);
+                    }}
                 />
+            )}
+
+            {showDateList && selectedCalendarDate && (
+                <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="absolute inset-0" onClick={() => setShowDateList(false)} />
+                    <div className="relative w-full max-w-lg bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5">
+                            <div>
+                                <div className="text-sm md:text-base font-bold text-white">
+                                    Markets on {selectedCalendarDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </div>
+                                <div className="text-[11px] text-white/40 mt-1">
+                                    {selectedCalendarItems.length === 0
+                                        ? 'No markets scheduled'
+                                        : `${selectedCalendarItems.length} market${selectedCalendarItems.length === 1 ? '' : 's'} available`}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowDateList(false)}
+                                className="p-1.5 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="max-h-[65vh] overflow-y-auto p-4 space-y-3">
+                            {selectedCalendarItems.length === 0 ? (
+                                <div className="text-white/40 text-sm text-center py-8">
+                                    No markets on this date.
+                                </div>
+                            ) : (
+                                selectedCalendarItems.map((item) => {
+                                    const timeLabel = item.is_schedule_tba
+                                        ? 'TBA'
+                                        : item.start_time
+                                            ? item.end_time
+                                                ? `${item.start_time} - ${item.end_time}`
+                                                : item.start_time
+                                            : null;
+
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => onSelect(item)}
+                                            className="w-full text-left rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors p-3 flex flex-col gap-2"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="text-white font-semibold text-sm leading-tight">{item.title}</div>
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${item.type === 'MARKET'
+                                                    ? 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                                                    : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'}`}>
+                                                    {item.type}
+                                                </span>
+                                            </div>
+                                            <div className="text-white/50 text-xs line-clamp-2">
+                                                {item.description || 'No description available.'}
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/40">
+                                                {item.address && (
+                                                    <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10">
+                                                        {item.address}
+                                                    </span>
+                                                )}
+                                                {timeLabel && (
+                                                    <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10">
+                                                        {timeLabel}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
