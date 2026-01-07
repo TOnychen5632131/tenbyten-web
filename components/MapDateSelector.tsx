@@ -23,13 +23,13 @@ const MapDateSelector = ({ onDateSelect }: MapDateSelectorProps) => {
             {/* Main Date Display Button */}
             <button
                 onClick={() => setShowCalendar(true)}
-                className="group flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-white/5 transition-all outline-none"
+                className="group flex items-center gap-2 px-3 py-1.5 rounded-full transition-all outline-none hover:bg-foreground/5 dark:hover:bg-white/5"
             >
-                <span className="text-sm md:text-base font-medium text-white font-sans flex items-baseline gap-1">
+                <span className="text-sm md:text-base font-medium text-foreground font-sans flex items-baseline gap-1 dark:text-white">
                     {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    <span className="opacity-40 font-normal text-xs">{selectedDate.getFullYear()}</span>
+                    <span className="text-foreground/40 font-normal text-xs dark:text-white/40">{selectedDate.getFullYear()}</span>
                 </span>
-                <ChevronDown className={`text-white/40 transition-transform duration-300 ${showCalendar ? 'rotate-180' : ''}`} size={14} />
+                <ChevronDown className={`text-foreground/40 transition-transform duration-300 dark:text-white/40 ${showCalendar ? 'rotate-180' : ''}`} size={14} />
             </button>
 
             {/* Calendar Overlay */}

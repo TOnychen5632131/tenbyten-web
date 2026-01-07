@@ -99,6 +99,7 @@ const SearchResultCard = ({ item, onSelect }: { item: any, onSelect: (item: any)
 const RevolutionHero = () => {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState('search');
+    const [isListCalendarOpen, setIsListCalendarOpen] = useState(false);
     const { user, profile, loading } = useAuth(); // Import useAuth
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // Local state if we want to trigger modal from here, or we can just block activeTab change
     const [isProfileGateOpen, setIsProfileGateOpen] = useState(false);
@@ -119,6 +120,12 @@ const RevolutionHero = () => {
             setIsProfileGateOpen(false);
         }
     }, [needsProfileAccess, hasPromptedProfile]);
+
+    React.useEffect(() => {
+        if (activeTab !== 'list' && isListCalendarOpen) {
+            setIsListCalendarOpen(false);
+        }
+    }, [activeTab, isListCalendarOpen]);
 
     // Intercept tab change
     const handleTabChange = (tab: string) => {
@@ -322,9 +329,9 @@ const RevolutionHero = () => {
         // Use 100dvh for better mobile browser support (address bar handling)
         <div className="relative w-full h-[100dvh] flex flex-col items-center justify-center overflow-hidden bg-black">
             {/* Navigation Wrapper - Absolute to avoid flex centering */}
-            {!selectedResult && (
+            {!selectedResult && !isListCalendarOpen && (
                 <div className="absolute top-0 left-0 right-0 z-[100]">
-                    <SegmentedNav activeTab={activeTab} onTabChange={handleTabChange} />
+                    <SegmentedNav activeTab={activeTab} onTabChange={handleTabChange} forceDark={activeTab === 'search'} />
                 </div>
             )}
 
@@ -571,8 +578,8 @@ const RevolutionHero = () => {
 
             {/* LIST VIEW (Google Style) */}
             {activeTab === 'list' && (
-                <div className="absolute inset-0 z-[40] bg-[#202124] animate-fade-in overflow-y-auto">
-                    <PublicListView onSelect={setSelectedResult} />
+                <div className="absolute inset-0 z-[40] bg-background dark:bg-[#202124] animate-fade-in overflow-y-auto">
+                    <PublicListView onSelect={setSelectedResult} onCalendarVisibilityChange={setIsListCalendarOpen} />
                 </div>
             )}
 

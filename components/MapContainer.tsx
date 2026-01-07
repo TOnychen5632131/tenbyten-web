@@ -3,12 +3,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import MapDateSelector from './MapDateSelector';
 import MapFilterToggle from './MapFilterToggle';
 import OpportunityDetail from './OpportunityDetail';
+import { isMarketOnDate } from '@/utils/marketSchedule';
 
 import dynamic from 'next/dynamic';
 
 const MapWithNoSSR = dynamic(() => import('./Map'), {
     ssr: false,
-    loading: () => <div className="w-full h-full bg-[#1a1a1a] animate-pulse" />
+    loading: () => <div className="w-full h-full bg-slate-100 dark:bg-[#1a1a1a] animate-pulse" />
 });
 
 type Opportunity = {
@@ -57,87 +58,6 @@ type Pin = {
     tags?: string[] | null;
     website?: string | null;
     applicationLink?: string | null;
-};
-
-const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-
-const parseDate = (value?: string | null) => {
-    if (!value) return null;
-    const parsed = new Date(`${value}T00:00:00`);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
-
-const isSameDay = (a: Date, b: Date) => {
-    return a.getFullYear() === b.getFullYear()
-        && a.getMonth() === b.getMonth()
-        && a.getDate() === b.getDate();
-};
-
-const getWeekOfMonth = (date: Date) => {
-    return Math.floor((date.getDate() - 1) / 7) + 1;
-};
-
-const isLastWeekdayOfMonth = (date: Date) => {
-    const next = new Date(date);
-    next.setDate(date.getDate() + 7);
-    return next.getMonth() !== date.getMonth();
-};
-
-const getDaysFromPattern = (pattern: string) => {
-    const days: number[] = [];
-    dayNames.forEach((name, idx) => {
-        if (pattern.includes(name)) {
-            days.push(idx);
-        }
-    });
-    return days;
-};
-
-const matchesMonthlyPattern = (date: Date, pattern: string) => {
-    const days = getDaysFromPattern(pattern);
-    if (days.length > 0 && !days.includes(date.getDay())) return false;
-
-    if (pattern.includes('last')) {
-        return isLastWeekdayOfMonth(date);
-    }
-
-    const ordinalMatch = pattern.match(/\b(\d)(st|nd|rd|th)\b/);
-    if (ordinalMatch) {
-        const ordinal = parseInt(ordinalMatch[1], 10);
-        return getWeekOfMonth(date) === ordinal;
-    }
-
-    return days.length > 0 ? days.includes(date.getDay()) : false;
-};
-
-const matchesRecurringPattern = (date: Date, patternRaw: string) => {
-    const pattern = patternRaw.toLowerCase();
-
-    if (pattern.includes('daily')) return true;
-    if (pattern.includes('monthly')) return matchesMonthlyPattern(date, pattern);
-
-    const days = getDaysFromPattern(pattern);
-    if (days.length > 0) return days.includes(date.getDay());
-
-    return true;
-};
-
-const isMarketOnDate = (item: Opportunity, date: Date) => {
-    const seasonStart = parseDate(item.season_start_date ?? item.start_date);
-    const seasonEnd = parseDate(item.season_end_date ?? item.end_date);
-
-    if (seasonStart && date < seasonStart) return false;
-    if (seasonEnd && date > seasonEnd) return false;
-
-    if (!item.recurring_pattern) {
-        if (item.is_recurring === false) {
-            if (seasonStart && seasonEnd) return date >= seasonStart && date <= seasonEnd;
-            if (seasonStart) return isSameDay(date, seasonStart);
-        }
-        return true;
-    }
-
-    return matchesRecurringPattern(date, item.recurring_pattern);
 };
 
 const isConsignmentOnDate = (item: Opportunity, date: Date) => {
@@ -260,7 +180,7 @@ const MapContainer = () => {
     };
 
     return (
-        <div className="relative w-full h-[100dvh] bg-[#1a1a1a] flex flex-col pt-32 md:pt-36">
+        <div className="relative w-full h-[100dvh] bg-background text-foreground dark:bg-[#1a1a1a] dark:text-white flex flex-col pt-32 md:pt-36">
             {/* Map visual placeholder */}
             <div className="absolute inset-0 z-0">
                 <MapWithNoSSR pins={pins} filterType={filterType} onSelect={handleSelectOpportunity} />
@@ -269,7 +189,7 @@ const MapContainer = () => {
             {/* Controls Overlay */}
             <div className="relative z-10 flex flex-col items-center pt-2 pointer-events-none">
                 {/* Floating Glass Bar */}
-                <div className="pointer-events-auto flex items-center gap-3 bg-[#1e1e1e]/90 backdrop-blur-md rounded-full pl-4 pr-1.5 py-1.5 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+                <div className="pointer-events-auto flex items-center gap-3 bg-white/80 backdrop-blur-md rounded-full pl-4 pr-1.5 py-1.5 border border-border shadow-[0_8px_32px_rgba(15,23,42,0.08)] dark:bg-[#1e1e1e]/90 dark:border-white/10 dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
 
                     {/* Date Selector */}
                     <div className="">
@@ -277,7 +197,7 @@ const MapContainer = () => {
                     </div>
 
                     {/* Divider */}
-                    <div className="w-px h-8 bg-white/10" />
+                    <div className="w-px h-8 bg-border dark:bg-white/10" />
 
                     {/* Type Toggle */}
                     <MapFilterToggle type={filterType} onChange={setFilterType} />
@@ -285,8 +205,8 @@ const MapContainer = () => {
             </div>
 
             {/* Bottom Sheet Placeholder for specific location details */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none">
-                <div className="text-white/40 text-center text-sm">
+            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background/95 via-background/70 to-transparent pointer-events-none dark:from-black dark:via-black/80">
+                <div className="text-muted-foreground text-center text-sm dark:text-white/40">
                     {isLoading ? 'Loading map data...' : 'Select a date and location to view details'}
                 </div>
             </div>

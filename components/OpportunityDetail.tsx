@@ -125,7 +125,7 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
     if (!data || !mounted) return null;
 
     const content = (
-        <div className="fixed inset-0 z-[10002] flex flex-col items-center justify-end md:justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[10002] flex flex-col items-center justify-end md:justify-center bg-black/40 dark:bg-black/60 backdrop-blur-sm animate-fade-in">
             <div className="absolute inset-0" onClick={onClose} />
 
             {/* Main Wrapper to handle button positioning */}
@@ -134,28 +134,28 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                 {/* Back/Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute z-50 p-2 rounded-full bg-black/20 text-white backdrop-blur-md border border-white/10 hover:bg-white/20 transition-all active:scale-95 top-4 left-4 md:top-0 md:-left-20"
+                    className="absolute z-50 p-2 rounded-full bg-white/80 text-foreground backdrop-blur-md border border-border shadow-sm hover:bg-white transition-all active:scale-95 top-4 left-4 md:top-0 md:-left-20 dark:bg-black/20 dark:text-white dark:border-white/10 dark:hover:bg-white/20"
                 >
                     <ChevronLeft size={24} />
                 </button>
 
                 {/* Card Content */}
-                <div className="relative w-full h-full bg-[#1e1e1e]/60 backdrop-blur-[50px] border border-white/10 rounded-t-[30px] md:rounded-[40px] overflow-hidden shadow-2xl flex flex-col">
+                <div className="relative w-full h-full bg-white backdrop-blur-[50px] border border-border rounded-t-[30px] md:rounded-[40px] overflow-hidden shadow-2xl flex flex-col text-foreground dark:bg-[#1e1e1e]/60 dark:border-white/10 dark:text-white">
                     {/* Scrollable Content */}
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar pb-32 pt-16 md:pt-6">
 
                         {/* Header: Title & Counter */}
                         <div className="flex justify-between items-start mb-6 pt-2">
                             <div className="flex-1 pr-4">
-                                <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight tracking-tight">
+                                <h2 className="text-2xl md:text-3xl font-bold text-foreground leading-tight tracking-tight dark:text-white">
                                     {data.title}
                                 </h2>
-                                <p className="text-white/60 text-sm mt-1 uppercase tracking-wider font-medium">
+                                <p className="text-muted-foreground text-sm mt-1 uppercase tracking-wider font-medium dark:text-white/60">
                                     {data.type === 'MARKET' ? 'Offline Event' : 'Consignment Shop'}
                                 </p>
                             </div>
                             {/* Circular Counter - Google Ratings */}
-                            <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center shrink-0 shadow-lg relative group overflow-hidden">
+                            <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center shrink-0 shadow-lg relative group overflow-hidden border border-border dark:border-white/10">
                                 {stats.rating ? (
                                     <div className="text-center leading-none">
                                         <span className="block text-black font-bold text-lg">{stats.rating.toFixed(1)}</span>
@@ -171,21 +171,21 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                         </div>
 
                         {/* Date/Time Strip */}
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 mb-4">
-                            <div className="w-14 h-14 rounded-xl bg-white/10 flex flex-col items-center justify-center shrink-0 border border-white/5">
-                                <span className="text-[10px] text-white/60 uppercase font-bold tracking-wider">
+                        <div className="bg-slate-50 border border-border rounded-2xl p-4 flex items-center gap-4 mb-4 dark:bg-white/5 dark:border-white/10">
+                            <div className="w-14 h-14 rounded-xl bg-white flex flex-col items-center justify-center shrink-0 border border-border dark:bg-white/10 dark:border-white/5">
+                                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider dark:text-white/60">
                                     {scheduleTba ? 'TBA' : (nextDate ? nextDate.toLocaleDateString('en-US', { month: 'short' }) : 'END')}
                                 </span>
-                                <span className="text-xl text-white font-bold leading-none mt-0.5">
+                                <span className="text-xl text-foreground font-bold leading-none mt-0.5 dark:text-white">
                                     {scheduleTba ? '--' : (nextDate ? nextDate.getDate() : '--')}
                                 </span>
                             </div>
                             <div>
-                                <div className="text-white font-medium text-sm">
+                                <div className="text-foreground font-medium text-sm dark:text-white">
                                     {scheduleTba ? (
-                                        <span className="text-amber-300 font-bold">Schedule: TBA</span>
+                                        <span className="text-amber-700 font-bold dark:text-amber-300">Schedule: TBA</span>
                                     ) : (data.recurring_pattern ? (
-                                        <span className="text-blue-300 font-bold">{data.recurring_pattern}</span>
+                                        <span className="text-blue-700 font-bold dark:text-blue-300">{data.recurring_pattern}</span>
                                     ) : (
                                         data.season_start_date ? (
                                             new Date(data.season_start_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
@@ -194,13 +194,13 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                                 </div>
 
                                 {!scheduleTba && (data.season_start_date || data.season_end_date) && (
-                                    <div className="text-white/50 text-xs mt-0.5">
+                                    <div className="text-muted-foreground text-xs mt-0.5 dark:text-white/50">
                                         Season: {data.season_start_date ? new Date(data.season_start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
                                         {data.season_end_date ? ` - ${new Date(data.season_end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
                                     </div>
                                 )}
 
-                                <div className="text-white/50 text-xs flex items-center gap-1 mt-0.5">
+                                <div className="text-muted-foreground text-xs flex items-center gap-1 mt-0.5 dark:text-white/50">
                                     <Calendar size={12} />
                                     {scheduleTba
                                         ? 'TBA'
@@ -217,13 +217,13 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
 
                         {/* Vendor Application Window - High Priority */}
                         {(data.application_start_date || data.application_end_date) && (
-                            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 mb-4 flex items-center gap-3 animate-pulse-slow">
-                                <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
-                                    <Calendar size={20} className="text-emerald-400" />
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-4 flex items-center gap-3 animate-pulse-slow dark:bg-emerald-500/10 dark:border-emerald-500/20">
+                                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 dark:bg-emerald-500/20">
+                                    <Calendar size={20} className="text-emerald-600 dark:text-emerald-400" />
                                 </div>
                                 <div>
-                                    <div className="text-emerald-400 text-xs font-bold uppercase tracking-wider mb-0.5">Vendor Application Window</div>
-                                    <div className="text-emerald-100 text-sm font-medium">
+                                    <div className="text-emerald-700 text-xs font-bold uppercase tracking-wider mb-0.5 dark:text-emerald-400">Vendor Application Window</div>
+                                    <div className="text-emerald-800 text-sm font-medium dark:text-emerald-100">
                                         {data.application_start_date ? new Date(data.application_start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Now'}
                                         {' - '}
                                         {data.application_end_date ? new Date(data.application_end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Until Full'}
@@ -234,20 +234,20 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
 
                         {/* Advanced Schedule (Seasonal / Exceptions) */}
                         {data.additional_schedules && data.additional_schedules.length > 0 && (
-                            <div className="mb-6 bg-white/5 border border-white/10 rounded-2xl p-4 animate-fade-in-up delay-100">
-                                <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                                    <Clock size={16} className="text-orange-400" />
+                            <div className="mb-6 bg-slate-50 border border-border rounded-2xl p-4 animate-fade-in-up delay-100 dark:bg-white/5 dark:border-white/10">
+                                <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2 dark:text-white">
+                                    <Clock size={16} className="text-orange-500 dark:text-orange-400" />
                                     Seasonal Hours & Exceptions
                                 </h3>
                                 <div className="space-y-3">
                                     {data.additional_schedules.map((schedule: any, idx: number) => (
-                                        <div key={idx} className="text-sm border-l-2 border-white/10 pl-3">
-                                            {schedule.label && <div className="font-bold text-white/90">{schedule.label}</div>}
-                                            <div className="text-white/60 text-xs mt-1">
+                                        <div key={idx} className="text-sm border-l-2 border-border pl-3 dark:border-white/10">
+                                            {schedule.label && <div className="font-bold text-foreground dark:text-white/90">{schedule.label}</div>}
+                                            <div className="text-muted-foreground text-xs mt-1 dark:text-white/60">
                                                 {schedule.start_date ? new Date(schedule.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
                                                 {schedule.end_date ? ` - ${new Date(schedule.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
                                             </div>
-                                            <div className="text-white/60 text-xs">
+                                            <div className="text-muted-foreground text-xs dark:text-white/60">
                                                 {schedule.days?.join(', ')} • {schedule.start_time} - {schedule.end_time}
                                             </div>
                                         </div>
@@ -261,43 +261,43 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                             <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                                 <Star className="text-yellow-400 fill-yellow-400" size={24} />
                                 Reviews
-                                {loadingReviews && <span className="text-xs font-normal text-white/40 ml-2 animate-pulse">(Loading from Google...)</span>}
+                                {loadingReviews && <span className="text-xs font-normal text-muted-foreground ml-2 animate-pulse dark:text-white/40">(Loading from Google...)</span>}
                             </h3>
 
                             {!loadingReviews && reviews.length === 0 && (
-                                <div className="p-6 rounded-2xl bg-white/5 border border-white/10 text-center text-white/40">
+                                <div className="p-6 rounded-2xl bg-slate-50 border border-border text-center text-muted-foreground dark:bg-white/5 dark:border-white/10 dark:text-white/40">
                                     No reviews found yet.
                                 </div>
                             )}
 
                             <div className="space-y-4">
                                 {reviews.map((review, idx) => (
-                                    <div key={idx} className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                                    <div key={idx} className="p-4 rounded-2xl bg-white border border-border dark:bg-white/5 dark:border-white/10">
                                         <div className="flex items-center gap-3 mb-2">
                                             {review.author_photo_url ? (
                                                 <img src={review.author_photo_url} alt={review.author_name} className="w-8 h-8 rounded-full" />
                                             ) : (
-                                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 dark:bg-white/10 dark:text-white/70">
                                                     <User size={14} />
                                                 </div>
                                             )}
                                             <div>
-                                                <div className="text-sm font-bold text-white">{review.author_name}</div>
+                                                <div className="text-sm font-bold text-foreground dark:text-white">{review.author_name}</div>
                                                 <div className="flex items-center gap-1">
                                                     <div className="flex text-yellow-400">
                                                         {[...Array(5)].map((_, i) => (
                                                             <Star
                                                                 key={i}
                                                                 size={10}
-                                                                className={i < review.rating ? "fill-current" : "text-white/20"}
+                                                                className={i < review.rating ? "fill-current" : "text-foreground/20 dark:text-white/20"}
                                                             />
                                                         ))}
                                                     </div>
-                                                    <span className="text-[10px] text-white/40 ml-2">{review.original_date}</span>
+                                                    <span className="text-[10px] text-muted-foreground ml-2 dark:text-white/40">{review.original_date}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <p className="text-sm text-white/80 leading-relaxed font-light">
+                                        <p className="text-sm text-foreground/80 leading-relaxed font-light dark:text-white/80">
                                             "{review.text}"
                                         </p>
                                     </div>
@@ -306,22 +306,22 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                         </div>
 
                         {/* Location Card */}
-                        <div className="bg-white/5 border border-white/10 rounded-3xl p-2 flex gap-3 mb-6">
-                            <div className="w-24 h-24 rounded-2xl bg-gray-700 relative overflow-hidden shrink-0">
-                                <div className="absolute inset-0 opacity-50 bg-[url('https://api.mapbox.com/styles/v1/mapbox/dark-v10/static/0,0,10,0/300x300?access_token=pk.eyJ1IjoidGVhY2hlcmZ1bmciLCJhIjoiY2x0ZzJzN29vMDBtNDJrbzB5dG9uYTN2biJ9.awC8u4b-fI4q4lY-w9J4Ig')] bg-cover bg-center"></div>
+                        <div className="bg-white border border-border rounded-3xl p-2 flex gap-3 mb-6 dark:bg-white/5 dark:border-white/10">
+                            <div className="w-24 h-24 rounded-2xl bg-slate-200 relative overflow-hidden shrink-0 dark:bg-gray-700">
+                                <div className="absolute inset-0 opacity-50 bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v10/static/0,0,10,0/300x300?access_token=pk.eyJ1IjoidGVhY2hlcmZ1bmciLCJhIjoiY2x0ZzJzN29vMDBtNDJrbzB5dG9uYTN2biJ9.awC8u4b-fI4q4lY-w9J4Ig')] dark:bg-[url('https://api.mapbox.com/styles/v1/mapbox/dark-v10/static/0,0,10,0/300x300?access_token=pk.eyJ1IjoidGVhY2hlcmZ1bmciLCJhIjoiY2x0ZzJzN29vMDBtNDJrbzB5dG9uYTN2biJ9.awC8u4b-fI4q4lY-w9J4Ig')] bg-cover bg-center"></div>
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <MapPin size={24} className="text-white drop-shadow-md" fill="currentColor" />
+                                    <MapPin size={24} className="text-foreground drop-shadow-md dark:text-white" fill="currentColor" />
                                 </div>
                             </div>
                             <div className="flex-1 py-1 pr-2 flex flex-col justify-center">
-                                <div className="text-white text-sm font-medium leading-tight mb-2">
+                                <div className="text-foreground text-sm font-medium leading-tight mb-2 dark:text-white">
                                     {data.address || "Location pending"}
                                 </div>
                                 <a
                                     href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(data.address || '')}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="self-start flex items-center gap-1 bg-white text-black px-3 py-1.5 rounded-full text-xs font-bold hover:bg-gray-200 transition-colors"
+                                    className="self-start flex items-center gap-1 bg-foreground text-background px-3 py-1.5 rounded-full text-xs font-bold hover:bg-foreground/90 transition-colors dark:bg-white dark:text-black dark:hover:bg-gray-200"
                                 >
                                     <ExternalLink size={12} />
                                     Get Direction
@@ -331,13 +331,13 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
 
                         {/* Hosted By */}
                         <div className="space-y-3 mb-8">
-                            <div className="bg-white/5 border border-white/5 rounded-2xl p-3 flex justify-between items-center">
-                                <span className="text-white/60 text-sm pl-1">Hosted By</span>
-                                <div className="flex items-center gap-2 bg-black/20 rounded-full pl-1 pr-3 py-1">
+                            <div className="bg-white border border-border rounded-2xl p-3 flex justify-between items-center dark:bg-white/5 dark:border-white/5">
+                                <span className="text-muted-foreground text-sm pl-1 dark:text-white/60">Hosted By</span>
+                                <div className="flex items-center gap-2 bg-slate-100 rounded-full pl-1 pr-3 py-1 dark:bg-black/20">
                                     <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
-                                        <User size={14} className="text-blue-200" />
+                                        <User size={14} className="text-blue-700 dark:text-blue-200" />
                                     </div>
-                                    <span className="text-white text-xs font-medium truncate max-w-[150px]">
+                                    <span className="text-foreground text-xs font-medium truncate max-w-[150px] dark:text-white">
                                         {data.organizer_name || "Tenbyten Host"}
                                     </span>
                                 </div>
@@ -347,22 +347,22 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                         {/* Admission Fees */}
                         {(data.admission_fees?.length > 0 || data.admission_fee) && (
                             <div className="space-y-3 mb-8">
-                                <div className="bg-white/5 border border-white/5 rounded-2xl p-3">
+                                <div className="bg-white border border-border rounded-2xl p-3 dark:bg-white/5 dark:border-white/5">
                                     <div className="flex justify-between items-start mb-2">
-                                        <span className="text-white/60 text-sm pl-1">Admission</span>
+                                        <span className="text-muted-foreground text-sm pl-1 dark:text-white/60">Admission</span>
                                     </div>
                                     <div className="space-y-1">
                                         {data.admission_fees && data.admission_fees.length > 0 ? (
                                             data.admission_fees.map((fee: any, idx: number) => (
-                                                <div key={idx} className="flex justify-between items-center bg-black/20 rounded-lg px-3 py-2">
-                                                    <span className="text-white text-sm">{fee.label}</span>
-                                                    <span className="text-white font-bold text-sm text-emerald-400">${fee.price}</span>
+                                                <div key={idx} className="flex justify-between items-center bg-slate-100 rounded-lg px-3 py-2 dark:bg-black/20">
+                                                    <span className="text-foreground text-sm dark:text-white">{fee.label}</span>
+                                                    <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400">${fee.price}</span>
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="flex justify-between items-center bg-black/20 rounded-lg px-3 py-2">
-                                                <span className="text-white text-sm">General Admission</span>
-                                                <span className="text-white font-bold text-sm text-emerald-400">${data.admission_fee}</span>
+                                            <div className="flex justify-between items-center bg-slate-100 rounded-lg px-3 py-2 dark:bg-black/20">
+                                                <span className="text-foreground text-sm dark:text-white">General Admission</span>
+                                                <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400">${data.admission_fee}</span>
                                             </div>
                                         )}
                                     </div>
@@ -372,8 +372,8 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
 
                         {/* About Event */}
                         <div className="mb-6">
-                            <h3 className="text-white font-bold text-lg mb-2">About Event</h3>
-                            <p className="text-white/60 text-sm leading-relaxed font-light whitespace-pre-wrap">
+                            <h3 className="text-foreground font-bold text-lg mb-2 dark:text-white">About Event</h3>
+                            <p className="text-muted-foreground text-sm leading-relaxed font-light whitespace-pre-wrap dark:text-white/60">
                                 {data.description || "No description provided."}
                             </p>
                         </div>
@@ -381,29 +381,29 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                         {/* Features / Insights */}
                         {
                             (data.tags?.length > 0 || data.categories?.length > 0) && (
-                                <div className="mb-24 bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+                                <div className="mb-24 bg-slate-50 border border-border rounded-2xl p-4 md:p-5 relative overflow-hidden group dark:bg-white/5 dark:border-white/10">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
                                     <div className="flex items-center gap-2 mb-4">
-                                        <ShieldCheck className="text-blue-400" size={20} />
-                                        <h3 className="text-white font-bold text-lg">Market Features</h3>
+                                        <ShieldCheck className="text-blue-600 dark:text-blue-400" size={20} />
+                                        <h3 className="text-foreground font-bold text-lg dark:text-white">Market Features</h3>
                                     </div>
 
                                     <div className="flex flex-wrap gap-2">
                                         {data.categories?.map((cat: string, i: number) => (
-                                            <span key={`cat-${i}`} className="text-[10px] px-2 py-1 bg-blue-500/10 text-blue-300 border border-blue-500/20 rounded-md">
+                                            <span key={`cat-${i}`} className="text-[10px] px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20">
                                                 {cat}
                                             </span>
                                         ))}
                                         {data.tags?.map((tag: string, i: number) => (
-                                            <span key={`tag-${i}`} className="text-[10px] px-2 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-md">
+                                            <span key={`tag-${i}`} className="text-[10px] px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20">
                                                 {tag}
                                             </span>
                                         ))}
                                     </div>
 
                                     {data.vendor_count && (
-                                        <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-white/50 text-xs">
+                                        <div className="mt-4 pt-4 border-t border-border flex items-center gap-2 text-muted-foreground text-xs dark:border-white/5 dark:text-white/50">
                                             <Users size={14} />
                                             <span>Approx. {data.vendor_count} Vendors</span>
                                         </div>
@@ -415,7 +415,7 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                     </div>
 
                     {/* Bottom Action Bar */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 md:p-6 bg-gradient-to-t from-[#1e1e1e] from-60% via-[#1e1e1e]/80 to-transparent pointer-events-none flex justify-center">
+                    <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 md:p-6 bg-gradient-to-t from-white/95 from-60% via-white/80 to-transparent pointer-events-none flex justify-center dark:from-[#1e1e1e] dark:via-[#1e1e1e]/80">
                         <button
                             onClick={() => {
                                 const targetUrl = data.application_link || data.website;
@@ -425,7 +425,7 @@ const OpportunityDetail = ({ data, onClose }: OpportunityDetailProps) => {
                                     window.open(`https://www.google.com/search?q=${encodeURIComponent(data.title + " booth application")}`, '_blank');
                                 }
                             }}
-                            className="pointer-events-auto w-full bg-white text-black font-bold text-lg py-4 rounded-full shadow-[0_10px_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                            className="pointer-events-auto w-full bg-foreground text-background font-bold text-lg py-4 rounded-full shadow-[0_10px_40px_rgba(15,23,42,0.12)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 dark:bg-white dark:text-black dark:shadow-[0_10px_40px_rgba(255,255,255,0.2)]"
                         >
                             <ExternalLink size={20} />
                             {data.type === 'MARKET' ? 'Apply for Booth' : 'Contact Shop'}

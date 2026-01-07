@@ -75,6 +75,33 @@ const geocodeAddress = async (query: string): Promise<GeocodeResult | null> => {
     };
 };
 
+const buildMarketYearFilter = (year: string) => {
+    const yearStart = `${year}-01-01`;
+    const yearEnd = `${year}-12-31`;
+
+    const seasonStartInYear = `and(season_start_date.gte.${yearStart},season_start_date.lte.${yearEnd})`;
+    const seasonOverlapsYear = `and(season_start_date.lte.${yearEnd},season_end_date.gte.${yearStart})`;
+    const recurringOpenSeason = `and(season_start_date.lte.${yearEnd},season_end_date.is.null,is_recurring.eq.true)`;
+
+    const legacyStartInYear = `and(season_start_date.is.null,start_date.gte.${yearStart},start_date.lte.${yearEnd})`;
+    const legacyOverlapsYear = `and(season_start_date.is.null,start_date.lte.${yearEnd},end_date.gte.${yearStart})`;
+    const legacyRecurringOpen = `and(season_start_date.is.null,start_date.lte.${yearEnd},end_date.is.null,is_recurring.eq.true)`;
+    const legacyRecurringNoDates = `and(season_start_date.is.null,start_date.is.null,is_recurring.eq.true)`;
+
+    const tba = 'is_schedule_tba.eq.true';
+
+    return [
+        seasonStartInYear,
+        seasonOverlapsYear,
+        recurringOpenSeason,
+        legacyStartInYear,
+        legacyOverlapsYear,
+        legacyRecurringOpen,
+        legacyRecurringNoDates,
+        tba
+    ].join(',');
+};
+
 // GET: Fetch all or specific opportunity
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
@@ -125,19 +152,7 @@ export async function GET(req: NextRequest) {
 
                 // Apply Year Filter to market_details Query
                 if (year) {
-                    const yearStart = `${year}-01-01`;
-                    const yearEnd = `${year}-12-31`;
-                    if (year === '2025') {
-                        // Include TBA and null legacy records for 2025 while keeping the year range.
-                        mktQuery = mktQuery.or(
-                            `and(season_start_date.gte.${yearStart},season_start_date.lte.${yearEnd}),season_start_date.is.null,is_schedule_tba.eq.true`
-                        );
-                    } else {
-                        // Include TBA items alongside the year range.
-                        mktQuery = mktQuery.or(
-                            `and(season_start_date.gte.${yearStart},season_start_date.lte.${yearEnd}),is_schedule_tba.eq.true`
-                        );
-                    }
+                    mktQuery = mktQuery.or(buildMarketYearFilter(year));
                 }
 
                 // Apply Ordering
@@ -186,12 +201,10 @@ export async function GET(req: NextRequest) {
             } else {
                 // Standard Year Filter (only if not already handled by orderedIds)
                 if (year) {
-                    const yearStart = `${year}-01-01`;
-                    const yearEnd = `${year}-12-31`;
                     const { data: mktIds } = await supabase
                         .from('market_details')
                         .select('opportunity_id')
-                        .or(`and(season_start_date.gte.${yearStart},season_start_date.lte.${yearEnd}),is_schedule_tba.eq.true`);
+                        .or(buildMarketYearFilter(year));
                     if (mktIds) {
                         const ids = mktIds.map(m => m.opportunity_id);
                         if (ids.length > 0) supabaseQuery = supabaseQuery.in('id', ids);

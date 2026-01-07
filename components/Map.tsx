@@ -213,7 +213,7 @@ const Map = ({ pins, filterType, onSelect }: MapProps) => {
                     <Star
                       className={`h-3.5 w-3.5 ${hasRating
                         ? "fill-amber-400 text-amber-400"
-                        : "text-white/30"
+                        : "text-foreground/30 dark:text-white/30"
                         }`}
                     />
                     <span className="font-medium text-foreground">

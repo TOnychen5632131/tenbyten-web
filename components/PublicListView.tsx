@@ -2,12 +2,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Star, ArrowUpRight, ChevronDown, Calendar, X } from 'lucide-react';
 import CalendarView from './admin/CalendarView';
+import { isMarketOnDate } from '@/utils/marketSchedule';
 
 interface PublicListViewProps {
     onSelect: (item: any) => void;
+    onCalendarVisibilityChange?: (isVisible: boolean) => void;
 }
 
-const PublicListView = ({ onSelect }: PublicListViewProps) => {
+const PublicListView = ({ onSelect, onCalendarVisibilityChange }: PublicListViewProps) => {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -31,59 +33,47 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
     const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
     const [selectedCalendarItems, setSelectedCalendarItems] = useState<any[]>([]);
     const [showDateList, setShowDateList] = useState(false);
+    const isCalendarOverlayOpen = showCalendar || showDateList;
 
-    const isOpportunityOnCalendarDate = (opp: any, date: Date) => {
-        const targetDate = new Date(date);
-        targetDate.setHours(0, 0, 0, 0);
-        const dayOfWeek = targetDate.getDay(); // 0 = Sunday
-
-        if (!opp.recurring_pattern || opp.recurring_pattern === 'null') {
-            const startStr = opp.season_start_date || opp.start_date;
-            if (!startStr) return false;
-            const startDate = new Date(startStr);
-            startDate.setHours(0, 0, 0, 0);
-            return startDate.getTime() === targetDate.getTime();
-        }
-
-        if (opp.type !== 'MARKET') return false;
-
-        if (opp.season_start_date) {
-            const start = new Date(opp.season_start_date);
-            start.setHours(0, 0, 0, 0);
-            if (start > targetDate) return false;
-        }
-        if (opp.season_end_date) {
-            const end = new Date(opp.season_end_date);
-            end.setHours(0, 0, 0, 0);
-            if (end < targetDate) return false;
-        }
-
-        const pattern = (opp.recurring_pattern || '').toLowerCase();
-        const daysMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        if (pattern.includes(daysMap[dayOfWeek])) return true;
-        if (pattern.includes('daily') || pattern.includes('every day')) return true;
-
-        return false;
-    };
+    useEffect(() => {
+        onCalendarVisibilityChange?.(isCalendarOverlayOpen);
+    }, [isCalendarOverlayOpen, onCalendarVisibilityChange]);
 
     useEffect(() => {
         if (showCalendar && calendarItems.length === 0) {
             // Fetch all items for the calendar view to ensure accurate counts
             const fetchCalendarItems = async () => {
                 try {
-                    const params = new URLSearchParams({
-                        page: '1',
-                        limit: '1000', // Fetch a large batch for calendar
-                        year: year.toString()
-                    });
-                    const res = await fetch(`/api/opportunities?${params.toString()}`);
-                    const responseData = await res.json();
+                    const batchSize = 1000;
+                    let currentPage = 1;
+                    let totalPages = 1;
+                    const allItems: any[] = [];
 
-                    const allItems = Array.isArray(responseData)
-                        ? responseData
-                        : Array.isArray(responseData?.data)
-                            ? responseData.data
-                            : [];
+                    do {
+                        const params = new URLSearchParams({
+                            page: currentPage.toString(),
+                            limit: batchSize.toString(),
+                            year: year.toString()
+                        });
+                        const res = await fetch(`/api/opportunities?${params.toString()}`);
+                        const responseData = await res.json();
+
+                        const pageItems = Array.isArray(responseData)
+                            ? responseData
+                            : Array.isArray(responseData?.data)
+                                ? responseData.data
+                                : [];
+
+                        allItems.push(...pageItems);
+
+                        if (Array.isArray(responseData)) {
+                            totalPages = 1;
+                        } else {
+                            totalPages = responseData?.meta?.totalPages ?? 1;
+                        }
+
+                        currentPage += 1;
+                    } while (currentPage <= totalPages);
 
                     setCalendarItems(allItems);
                 } catch (error) {
@@ -174,25 +164,25 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
 
     if (loading) {
         return (
-            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black">
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background dark:bg-black">
                 <div className="relative">
                     {/* Pulsing Core */}
-                    <div className="w-24 h-24 rounded-full bg-blue-500/20 animate-pulse flex items-center justify-center shadow-[0_0_50px_rgba(59,130,246,0.3)]">
-                        <div className="w-16 h-16 rounded-full bg-blue-400/20 flex items-center justify-center animate-spin-slow">
-                            <div className="w-12 h-12 rounded-full border-2 border-t-blue-400 border-r-transparent border-b-blue-400 border-l-transparent animate-spin" />
+                    <div className="w-24 h-24 rounded-full bg-blue-600/20 dark:bg-blue-500/20 animate-pulse flex items-center justify-center shadow-[0_0_50px_rgba(59,130,246,0.3)]">
+                        <div className="w-16 h-16 rounded-full bg-blue-600/10 dark:bg-blue-400/20 flex items-center justify-center animate-spin-slow">
+                            <div className="w-12 h-12 rounded-full border-2 border-t-blue-600 border-r-transparent border-b-blue-600 border-l-transparent dark:border-t-blue-400 dark:border-b-blue-400 animate-spin" />
                         </div>
                     </div>
                     {/* Scanning Circles */}
-                    <div className="absolute inset-0 w-24 h-24 rounded-full border border-blue-500/30 animate-ping opacity-20" />
+                    <div className="absolute inset-0 w-24 h-24 rounded-full border border-blue-500/40 dark:border-blue-500/30 animate-ping opacity-20" />
                 </div>
 
                 <div className="mt-8 text-center space-y-2">
-                    <div className="text-blue-400 font-mono text-xs tracking-[0.2em] animate-pulse">
+                    <div className="text-blue-700 dark:text-blue-400 font-mono text-xs tracking-[0.2em] animate-pulse">
                         {loadingMessages[loadingStage]}
                     </div>
                     <div className="flex gap-1 justify-center mt-2">
                         {[0, 1, 2].map((i) => (
-                            <div key={i} className="w-1 h-1 bg-blue-500/50 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.1}s` }} />
+                            <div key={i} className="w-1 h-1 bg-blue-600/50 dark:bg-blue-500/50 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.1}s` }} />
                         ))}
                     </div>
                 </div>
@@ -201,11 +191,11 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
     }
 
     return (
-        <div className="w-full min-h-[100dvh] pt-32 pb-32 px-4 md:px-0 flex flex-col items-center bg-black">
+        <div className="w-full min-h-[100dvh] pt-32 pb-32 px-4 md:px-0 flex flex-col items-center bg-background text-foreground dark:bg-black">
             <div className="w-full max-w-7xl">
 
                 <div className="flex flex-col md:flex-row justify-between items-end mb-8 mt-8 px-2 gap-4">
-                    <div className="text-white/40 text-[10px] uppercase tracking-widest font-medium mb-4 md:mb-0">
+                    <div className="text-muted-foreground text-[10px] uppercase tracking-widest font-medium mb-4 md:mb-0 dark:text-white/40">
                         Found {displayTotal} opportunities in {year}
                     </div>
 
@@ -213,7 +203,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                         {/* Calendar Toggle */}
                         <button
                             onClick={() => setShowCalendar(true)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white font-bold text-xs hover:bg-white/10 transition-all backdrop-blur-md"
+                            className="flex items-center gap-2 px-4 py-2 rounded-full border text-foreground font-bold text-xs transition-all backdrop-blur-md bg-white/80 border-border hover:bg-white dark:bg-white/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
                         >
                             <Calendar size={14} className="opacity-70" />
                             <span className="hidden md:inline">Calendar</span>
@@ -222,7 +212,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                         <div className="relative">
                             <button
                                 onClick={() => setIsYearOpen(!isYearOpen)}
-                                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white font-bold text-xs hover:bg-white/10 transition-all backdrop-blur-md"
+                                className="flex items-center gap-2 px-4 py-2 rounded-full border text-foreground font-bold text-xs transition-all backdrop-blur-md bg-white/80 border-border hover:bg-white dark:bg-white/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
                             >
                                 <span className="opacity-50 text-[10px] uppercase mr-1">Year</span>
                                 {year}
@@ -232,7 +222,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                             {isYearOpen && (
                                 <>
                                     <div className="fixed inset-0 z-10" onClick={() => setIsYearOpen(false)} />
-                                    <div className="absolute right-0 top-full mt-2 w-32 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-20 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="absolute right-0 top-full mt-2 w-32 bg-white border border-border rounded-xl shadow-2xl overflow-hidden z-20 flex flex-col animate-in fade-in zoom-in-95 duration-200 dark:bg-[#1a1a1a] dark:border-white/10">
                                         {[2026, 2025].map((y) => (
                                             <button
                                                 key={y}
@@ -241,7 +231,9 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                                                     setPage(1);
                                                     setIsYearOpen(false);
                                                 }}
-                                                className={`px-4 py-3 text-left text-xs font-medium hover:bg-white/5 transition-colors flex justify-between items-center ${year === y ? 'text-white bg-white/5' : 'text-white/50'
+                                                className={`px-4 py-3 text-left text-xs font-medium transition-colors flex justify-between items-center ${year === y
+                                                    ? 'text-foreground bg-foreground/5 dark:text-white dark:bg-white/5'
+                                                    : 'text-foreground/70 hover:bg-foreground/5 dark:text-white/50 dark:hover:bg-white/5'
                                                     }`}
                                             >
                                                 {y}
@@ -269,14 +261,16 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                         <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r ${item.type === 'MARKET' ? 'from-blue-500 via-blue-400 to-blue-500' : 'from-emerald-500 via-teal-500 to-emerald-500'}`} />
 
                         {/* Glass Card Content */}
-                        <div className="relative h-full bg-white/5 backdrop-blur-2xl rounded-[23px] p-5 border border-white/10 flex flex-col gap-3 group-hover:bg-white/10 transition-colors">
+                        <div className="relative h-full rounded-[23px] p-5 border flex flex-col gap-3 transition-colors backdrop-blur-2xl bg-white border-border shadow-sm group-hover:bg-slate-50 dark:bg-white/5 dark:border-white/10 dark:shadow-none dark:group-hover:bg-white/10">
                             {/* Header Row */}
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <h3 className="text-xl font-bold text-white tracking-tight">{item.title}</h3>
+                                    <h3 className="text-xl font-bold text-foreground tracking-tight">{item.title}</h3>
                                     <div className="flex flex-wrap items-center gap-2 mt-2">
                                         {/* Type Badge */}
-                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${item.type === 'MARKET' ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'}`}>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${item.type === 'MARKET'
+                                            ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30'
+                                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30'}`}>
                                             {item.type}
                                         </span>
 
@@ -353,7 +347,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
 
                                             if (item.is_schedule_tba) {
                                                 return (
-                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30">
                                                         TBA
                                                     </span>
                                                 );
@@ -363,7 +357,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                                             if (!nextDate) return null;
 
                                             return (
-                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/80 border border-white/10 flex items-center gap-1">
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1 dark:bg-white/5 dark:text-white/80 dark:border-white/10">
                                                     Next: {nextDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                                 </span>
                                             );
@@ -371,19 +365,19 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
 
                                         {/* Rating Badge */}
                                         {Number.isFinite(Number(item.google_rating)) && (
-                                            <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 font-bold">
+                                            <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200 font-bold dark:bg-yellow-500/10 dark:text-yellow-500 dark:border-yellow-500/20">
                                                 <Star size={10} fill="currentColor" /> {Number(item.google_rating).toFixed(1)}
                                             </span>
                                         )}
                                     </div>
                                 </div>
-                                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-white/20 transition-colors">
-                                    <ArrowUpRight size={18} className="text-white/70" />
+                                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 group-hover:bg-slate-200 transition-colors dark:bg-white/5 dark:border-white/10 dark:group-hover:bg-white/20">
+                                    <ArrowUpRight size={18} className="text-slate-600 dark:text-white/70" />
                                 </div>
                             </div>
 
                             {/* Description */}
-                            <p className="text-white/60 text-sm leading-relaxed line-clamp-2">
+                            <p className="text-foreground/70 text-sm leading-relaxed line-clamp-2">
                                 {item.description || "No description available for this market opportunity."}
                             </p>
 
@@ -391,7 +385,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                             {item.tags && item.tags.length > 0 && (
                                 <div className="flex gap-2 mt-1 overflow-hidden">
                                     {item.tags.slice(0, 3).map((tag: string, i: number) => (
-                                        <span key={i} className="text-[10px] text-white/40 bg-white/5 px-2 py-0.5 rounded-md border border-white/5 whitespace-nowrap">
+                                        <span key={i} className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 whitespace-nowrap dark:text-white/40 dark:bg-white/5 dark:border-white/5">
                                             {tag}
                                         </span>
                                     ))}
@@ -408,7 +402,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                     <button
                         onClick={() => handlePageChange(page - 1)}
                         disabled={page === 1}
-                        className="flex items-center justify-center w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors backdrop-blur-md"
+                        className="flex items-center justify-center w-10 h-10 rounded-full border text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors backdrop-blur-md bg-white border-border hover:bg-slate-50 dark:bg-white/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
                     >
                         <ChevronLeft size={20} />
                     </button>
@@ -462,7 +456,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
 
                             return visiblePages.map((pageNum, idx) => (
                                 pageNum === -1 ? (
-                                    <div key={`ellipsis-${idx}`} className="w-10 h-10 flex items-center justify-center text-white/50">
+                                    <div key={`ellipsis-${idx}`} className="w-10 h-10 flex items-center justify-center text-muted-foreground dark:text-white/50">
                                         ...
                                     </div>
                                 ) : (
@@ -470,8 +464,8 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                                         key={pageNum}
                                         onClick={() => handlePageChange(pageNum)}
                                         className={`w-10 h-10 flex items-center justify-center rounded-full text-sm font-bold transition-all border ${page === pageNum
-                                            ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-110'
-                                            : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10 hover:text-white'}`}
+                                            ? 'bg-foreground text-background border-foreground shadow-[0_0_15px_rgba(15,23,42,0.15)] scale-110 dark:shadow-[0_0_15px_rgba(255,255,255,0.3)]'
+                                            : 'bg-white text-slate-600 border-border hover:bg-slate-50 hover:text-slate-900 dark:bg-white/5 dark:text-white/50 dark:border-white/5 dark:hover:bg-white/10 dark:hover:text-white'}`}
                                     >
                                         {pageNum}
                                     </button>
@@ -483,7 +477,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                     <button
                         onClick={() => handlePageChange(page + 1)}
                         disabled={page === totalPages}
-                        className="flex items-center justify-center w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors backdrop-blur-md"
+                        className="flex items-center justify-center w-10 h-10 rounded-full border text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors backdrop-blur-md bg-white border-border hover:bg-slate-50 dark:bg-white/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
                     >
                         <ChevronRight size={20} />
                     </button>
@@ -492,12 +486,12 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
 
             {/* Footer */}
             <div className="mt-16 text-center relative z-10 pointer-events-auto">
-                <div className="text-white/20 text-[10px] uppercase tracking-[0.2em]">
+                <div className="text-muted-foreground text-[10px] uppercase tracking-[0.2em] dark:text-white/20">
                     <span>TENBYTEN.VERCEL.APP</span>
                     <span className="mx-2">/</span>
                     <a
                         href="/about"
-                        className="text-white/40 underline decoration-white/20 underline-offset-4 hover:text-white/70 hover:decoration-white/60 transition-colors"
+                        className="text-foreground/60 underline decoration-foreground/30 underline-offset-4 hover:text-foreground/80 hover:decoration-foreground/50 transition-colors dark:text-white/40 dark:decoration-white/20 dark:hover:text-white/70 dark:hover:decoration-white/60"
                     >
                         About & Partnerships
                     </a>
@@ -510,8 +504,10 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                     opportunities={calendarItems.length > 0 ? calendarItems : items}
                     onDateSelect={(date) => {
                         const sourceItems = calendarItems.length > 0 ? calendarItems : items;
-                        const matches = sourceItems.filter((opp) => isOpportunityOnCalendarDate(opp, date));
-                        setSelectedCalendarDate(date);
+                        const normalizedDate = new Date(date);
+                        normalizedDate.setHours(0, 0, 0, 0);
+                        const matches = sourceItems.filter((opp) => opp.type === 'MARKET' && !opp.is_schedule_tba && isMarketOnDate(opp, normalizedDate));
+                        setSelectedCalendarDate(normalizedDate);
                         setSelectedCalendarItems(matches);
                         setShowDateList(true);
                     }}
@@ -523,15 +519,15 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
             )}
 
             {showDateList && selectedCalendarDate && (
-                <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 dark:bg-black/80">
                     <div className="absolute inset-0" onClick={() => setShowDateList(false)} />
-                    <div className="relative w-full max-w-lg bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-                        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5">
+                    <div className="relative w-full max-w-lg bg-white border border-border rounded-2xl shadow-2xl overflow-hidden text-foreground dark:bg-[#111] dark:border-white/10 dark:text-white">
+                        <div className="flex items-center justify-between p-4 border-b border-border bg-slate-50 dark:border-white/10 dark:bg-white/5">
                             <div>
-                                <div className="text-sm md:text-base font-bold text-white">
+                                <div className="text-sm md:text-base font-bold text-foreground">
                                     Markets on {selectedCalendarDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </div>
-                                <div className="text-[11px] text-white/40 mt-1">
+                                <div className="text-[11px] text-muted-foreground mt-1 dark:text-white/40">
                                     {selectedCalendarItems.length === 0
                                         ? 'No markets scheduled'
                                         : `${selectedCalendarItems.length} market${selectedCalendarItems.length === 1 ? '' : 's'} available`}
@@ -539,7 +535,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                             </div>
                             <button
                                 onClick={() => setShowDateList(false)}
-                                className="p-1.5 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-colors"
+                                className="p-1.5 hover:bg-slate-200 rounded-full text-slate-500 hover:text-slate-800 transition-colors dark:hover:bg-white/10 dark:text-white/40 dark:hover:text-white"
                             >
                                 <X size={18} />
                             </button>
@@ -547,7 +543,7 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
 
                         <div className="max-h-[65vh] overflow-y-auto p-4 space-y-3">
                             {selectedCalendarItems.length === 0 ? (
-                                <div className="text-white/40 text-sm text-center py-8">
+                                <div className="text-muted-foreground text-sm text-center py-8 dark:text-white/40">
                                     No markets on this date.
                                 </div>
                             ) : (
@@ -564,27 +560,27 @@ const PublicListView = ({ onSelect }: PublicListViewProps) => {
                                         <button
                                             key={item.id}
                                             onClick={() => onSelect(item)}
-                                            className="w-full text-left rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors p-3 flex flex-col gap-2"
+                                            className="w-full text-left rounded-xl border border-border bg-white hover:bg-slate-50 transition-colors p-3 flex flex-col gap-2 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
                                         >
                                             <div className="flex items-start justify-between gap-3">
-                                                <div className="text-white font-semibold text-sm leading-tight">{item.title}</div>
+                                                <div className="text-foreground font-semibold text-sm leading-tight">{item.title}</div>
                                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${item.type === 'MARKET'
-                                                    ? 'bg-blue-500/10 text-blue-300 border-blue-500/30'
-                                                    : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'}`}>
+                                                    ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30'
+                                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30'}`}>
                                                     {item.type}
                                                 </span>
                                             </div>
-                                            <div className="text-white/50 text-xs line-clamp-2">
+                                            <div className="text-muted-foreground text-xs line-clamp-2 dark:text-white/50">
                                                 {item.description || 'No description available.'}
                                             </div>
-                                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/40">
+                                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground dark:text-white/40">
                                                 {item.address && (
-                                                    <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10">
+                                                    <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-white/70">
                                                         {item.address}
                                                     </span>
                                                 )}
                                                 {timeLabel && (
-                                                    <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10">
+                                                    <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-white/70">
                                                         {timeLabel}
                                                     </span>
                                                 )}
