@@ -364,11 +364,15 @@ const PublicListView = ({ onSelect, onCalendarVisibilityChange }: PublicListView
                                         })()}
 
                                         {/* Rating Badge */}
-                                        {Number.isFinite(Number(item.google_rating)) && (
-                                            <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200 font-bold dark:bg-yellow-500/10 dark:text-yellow-500 dark:border-yellow-500/20">
-                                                <Star size={10} fill="currentColor" /> {Number(item.google_rating).toFixed(1)}
-                                            </span>
-                                        )}
+                                        {(() => {
+                                            const ratingValue = Number(item.google_rating);
+                                            if (!Number.isFinite(ratingValue) || ratingValue <= 0) return null;
+                                            return (
+                                                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200 font-bold dark:bg-yellow-500/10 dark:text-yellow-500 dark:border-yellow-500/20">
+                                                    <Star size={10} fill="currentColor" /> {ratingValue.toFixed(1)}
+                                                </span>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                                 <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 group-hover:bg-slate-200 transition-colors dark:bg-white/5 dark:border-white/10 dark:group-hover:bg-white/20">
