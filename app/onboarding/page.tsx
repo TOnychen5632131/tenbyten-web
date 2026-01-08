@@ -1,10 +1,8 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/utils/supabase';
-import { Loader2, Upload, Plus, Trash2, Info, ShieldCheck } from 'lucide-react';
+import { Loader2, Upload, Plus, Trash2, Info, ShieldCheck, DollarSign } from 'lucide-react';
 
 export default function OnboardingPage() {
     const router = useRouter();
@@ -15,12 +13,21 @@ export default function OnboardingPage() {
     // Form State
     const [brandName, setBrandName] = useState('');
     const [description, setDescription] = useState('');
+    const [priceRange, setPriceRange] = useState('');
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     // Start with 3 empty slots, or load from profile
     const [markets, setMarkets] = useState<string[]>(['', '', '']);
     const [marketError, setMarketError] = useState('');
     const minimumMarkets = 3;
+
+    const priceRanges = [
+        'Under $50',
+        '$50 - $100',
+        '$100 - $200',
+        '$200+',
+        'Any'
+    ];
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -33,6 +40,7 @@ export default function OnboardingPage() {
             setIsEditMode(true);
             setBrandName(profile.brand_name || '');
             setDescription(profile.product_description || '');
+            setPriceRange(profile.preferred_price_range || '');
             if (profile.avatar_url) {
                 setAvatarPreview(profile.avatar_url);
             }
@@ -129,14 +137,21 @@ export default function OnboardingPage() {
                 return;
             }
 
+            if (!priceRange) {
+                alert('Please select a preferred stall price range.');
+                setSubmitting(false);
+                return;
+            }
+
             const { error } = await supabase
                 .from('vendor_profiles')
                 .upsert({
                     id: user.id,
                     brand_name: brandName,
-                    product_description: description,
+                    product_description: description, // Now optional
                     avatar_url: avatarUrl,
                     top_markets: validMarkets,
+                    preferred_price_range: priceRange,
                     updated_at: new Date().toISOString()
                 });
 
@@ -173,7 +188,7 @@ export default function OnboardingPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-8">
 
-                    {/* Avatar Upload */}
+                    {/* Avatar Upload (Optional) */}
                     <div className="flex flex-col items-center gap-4 p-6 border border-dashed border-white/20 rounded-2xl bg-white/5 transition-colors hover:bg-white/10">
                         <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden bg-white/10 flex items-center justify-center border-2 border-white/20 shadow-xl">
                             {avatarPreview ? (
@@ -183,7 +198,7 @@ export default function OnboardingPage() {
                             )}
                         </div>
                         <label className="cursor-pointer px-6 py-2 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-all hover:scale-105 active:scale-95 text-sm">
-                            {isEditMode ? 'Change Avatar' : 'Upload Logo / Avatar'}
+                            {isEditMode ? 'Change Avatar' : 'Upload Logo / Avatar (Optional)'}
                             <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
                         </label>
                     </div>
@@ -191,7 +206,7 @@ export default function OnboardingPage() {
                     {/* Text Fields */}
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-mono text-white/50 uppercase tracking-widest ml-1">Brand Name</label>
+                            <label className="text-xs font-mono text-white/50 uppercase tracking-widest ml-1">Brand Name <span className="text-red-500">*</span></label>
                             <input
                                 type="text"
                                 required
@@ -202,13 +217,36 @@ export default function OnboardingPage() {
                             />
                         </div>
 
+                        {/* Price Range */}
+                        <div className="space-y-3">
+                            <label className="text-xs font-mono text-white/50 uppercase tracking-widest ml-1">Preferred Stall Price Range <span className="text-red-500">*</span></label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                {priceRanges.map((range) => (
+                                    <button
+                                        key={range}
+                                        type="button"
+                                        onClick={() => setPriceRange(range)}
+                                        className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all ${priceRange === range
+                                            ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20'
+                                            : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:border-white/20'
+                                            }`}
+                                    >
+                                        {range}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-white/40 ml-1">
+                                <Info size={12} />
+                                <span>We highlight stalls with similar prices to your preference.</span>
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
-                            <label className="text-xs font-mono text-white/50 uppercase tracking-widest ml-1">What do you sell?</label>
+                            <label className="text-xs font-mono text-white/50 uppercase tracking-widest ml-1">What do you sell? (Optional)</label>
                             <textarea
-                                required
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-base focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all h-32 resize-none placeholder:text-white/20"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-base focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all h-24 resize-none placeholder:text-white/20"
                                 placeholder="Describe your products, style, and story..."
                             />
                         </div>
@@ -217,20 +255,28 @@ export default function OnboardingPage() {
                     {/* Top Markets - Dynamic List */}
                     <div className="space-y-4">
                         <div className="flex flex-col gap-1">
-                            <label className="text-xs font-mono text-white/50 uppercase tracking-widest ml-1">Favorite Markets</label>
-                            <div className="flex items-start gap-2 p-3 bg-emerald-900/10 border border-emerald-500/20 rounded-lg text-emerald-300/80 text-sm">
-                                <Info size={16} className="mt-0.5 shrink-0" />
-                                <p>
-                                    Adding the markets you frequent helps our AI recommend similar venues where your brand would thrive.
-                                    <strong className="text-emerald-300 ml-1">The more you add, the more precise the recommendations.</strong>
-                                </p>
-                            </div>
-                            <div className="flex items-start gap-2 p-3 bg-blue-900/20 border border-blue-500/20 rounded-lg text-blue-200/80 text-sm">
-                                <ShieldCheck size={16} className="mt-0.5 shrink-0" />
-                                <p>
-                                    Please add at least {minimumMarkets} favorite markets. We review access to keep Tenbyten vendor-only.
-                                    <span className="text-blue-200 ml-1">Thanks for understanding.</span>
-                                </p>
+                            <label className="text-xs font-mono text-white/50 uppercase tracking-widest ml-1">Favorite Markets <span className="text-red-500">*</span></label>
+
+                            {/* Verification Warning Banner */}
+                            <div className="p-4 bg-gradient-to-br from-blue-900/30 to-purple-900/30 border border-white/10 rounded-xl space-y-3 mb-2">
+                                <div className="flex items-start gap-3">
+                                    <ShieldCheck size={20} className="text-blue-300 shrink-0 mt-0.5" />
+                                    <div>
+                                        <h4 className="text-sm font-bold text-blue-200 mb-1">Verify you are a real person</h4>
+                                        <p className="text-xs text-blue-200/70 leading-relaxed">
+                                            To ensure our platform serves genuine vendors with real needs, we require you to list at least 3 markets you frequent.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3 border-t border-white/5 pt-3">
+                                    <Info size={20} className="text-purple-300 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-xs text-purple-200/70 leading-relaxed">
+                                            This also helps our AI recommend venues where your brand would thrive.
+                                            <strong className="text-purple-200 ml-1">The more you add, the more precise the recommendations.</strong>
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -291,3 +337,4 @@ export default function OnboardingPage() {
         </div>
     );
 }
+
