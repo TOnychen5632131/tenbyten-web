@@ -10,6 +10,7 @@ import OpportunityDetail from './OpportunityDetail';
 import PublicListView from './PublicListView';
 import TrendingList from './TrendingList';
 import ProfileGateModal from './ProfileGateModal';
+import LoginRationalModal from './LoginRationalModal';
 
 const normalizeRating = (value: unknown) => {
     const parsed = Number(value);
@@ -102,6 +103,7 @@ const RevolutionHero = () => {
     const [isListCalendarOpen, setIsListCalendarOpen] = useState(false);
     const { user, profile, loading } = useAuth(); // Import useAuth
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // Local state if we want to trigger modal from here, or we can just block activeTab change
+    const [isRationaleModalOpen, setIsRationaleModalOpen] = useState(false);
     const [isProfileGateOpen, setIsProfileGateOpen] = useState(false);
     const [hasPromptedProfile, setHasPromptedProfile] = useState(false);
 
@@ -131,11 +133,7 @@ const RevolutionHero = () => {
     const handleTabChange = (tab: string) => {
         if ((tab === 'map' || tab === 'list') && !user) {
             // If trying to access protected tabs without auth
-            alert("Please login to access Map and List views."); // Simple alert for now, or trigger header modal if possible.
-            // Ideally we would open the global auth modal. 
-            // Since Header has the modal, we might need a global state or event. 
-            // For now, let's just create a local AuthModal instance here or use a simple alert.
-            setIsAuthModalOpen(true);
+            setIsRationaleModalOpen(true);
             return;
         }
         if ((tab === 'map' || tab === 'list') && (!hasRequiredMarkets || loading)) {
@@ -342,6 +340,14 @@ const RevolutionHero = () => {
                 onClose={() => setIsProfileGateOpen(false)}
                 currentCount={favoriteMarketCount}
                 requiredCount={3}
+            />
+            <LoginRationalModal
+                isOpen={isRationaleModalOpen}
+                onClose={() => setIsRationaleModalOpen(false)}
+                onLogin={() => {
+                    setIsRationaleModalOpen(false);
+                    setIsAuthModalOpen(true);
+                }}
             />
 
             {/* SEARCH VIEW */}
