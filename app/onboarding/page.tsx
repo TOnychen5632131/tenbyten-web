@@ -4,13 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/utils/supabase';
-import { Loader2, Upload, Plus, Trash2, Info, ShieldCheck, DollarSign } from 'lucide-react';
+import { Loader2, Upload, Plus, Trash2, Info, ShieldCheck, DollarSign, LogOut } from 'lucide-react';
 
 export default function OnboardingPage() {
     const router = useRouter();
     const { user, profile, loading: authLoading } = useAuth();
     const [submitting, setSubmitting] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
+    const [subscription, setSubscription] = useState<any>(null);
 
     // Form State
     const [brandName, setBrandName] = useState('');
@@ -56,6 +57,27 @@ export default function OnboardingPage() {
         }
     }, [user, profile, authLoading, router, minimumMarkets]);
 
+    // Enforce Subscription Check & Load Data
+    useEffect(() => {
+        const checkSubscription = async () => {
+            if (!user) return;
+            const { data } = await supabase.from('subscriptions').select('*').eq('user_id', user.id).maybeSingle();
+
+            // Check status
+            const isActive = data?.status === 'active' || data?.status === 'trialing';
+
+            if (!isActive) {
+                router.replace('/subscription');
+            } else {
+                setSubscription(data);
+            }
+        };
+
+        if (!authLoading && user) {
+            checkSubscription();
+        }
+    }, [user, authLoading, router]);
+
     const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
@@ -89,6 +111,35 @@ export default function OnboardingPage() {
             if (validCount >= minimumMarkets) {
                 setMarketError('');
             }
+        }
+    };
+
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        window.location.href = '/';
+    };
+
+    const handleManageSubscription = async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const response = await fetch('/api/portal', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            });
+
+            const data = await response.json();
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                alert('Failed to load subscription settings.');
+            }
+        } catch (error) {
+            console.error('Portal error:', error);
+            alert('Something went wrong.');
         }
     };
 
@@ -159,7 +210,7 @@ export default function OnboardingPage() {
 
             if (error) throw error;
 
-            // Reload to reflect changes or redirect home
+            // Redirect to home
             window.location.href = '/';
 
         } catch (error) {
@@ -181,14 +232,49 @@ export default function OnboardingPage() {
     return (
         <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 py-20">
             <div className="w-full max-w-2xl animate-fade-in relative z-10">
-                <h1 className="text-3xl md:text-5xl font-bold mb-2 tracking-tighter">
-                    {isEditMode ? 'Vendor Settings' : 'Welcome to Tenbyten'}
-                </h1>
+                <div className="flex justify-between items-start mb-2">
+                    <h1 className="text-3xl md:text-5xl font-bold tracking-tighter">
+                        {isEditMode ? 'Vendor Settings' : 'Welcome to Tenbyten'}
+                    </h1>
+                    <button
+                        type="button"
+                        onClick={handleSignOut}
+                        className="flex items-center gap-2 text-white/40 hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-white/10 mt-1"
+                    >
+                        <LogOut size={20} />
+                        <span className="hidden md:inline font-medium text-sm">Sign Out</span>
+                    </button>
+                </div>
                 <p className="text-white/60 mb-8 text-lg">
                     {isEditMode ? 'Update your brand details and preferences.' : "Let's set up your vendor profile."}
                 </p>
 
                 <form onSubmit={handleSubmit} className="space-y-8">
+
+                    {/* Subscription Status Card */}
+                    {subscription && (
+                        <div className="p-4 bg-emerald-900/10 border border-emerald-500/20 rounded-2xl flex items-center justify-between backdrop-blur-sm">
+                            <div>
+                                <div className="text-emerald-400 text-[10px] font-bold uppercase tracking-widest mb-1">Current Plan</div>
+                                <div className="text-white font-medium flex items-center gap-2">
+                                    Pro Vendor
+                                    <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] rounded-full font-bold">ACTIVE</span>
+                                </div>
+                                {subscription.current_period_end && (
+                                    <div className="text-white/40 text-[10px] mt-1">
+                                        Renews: {new Date(subscription.current_period_end).toLocaleDateString()}
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleManageSubscription}
+                                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-xs font-semibold transition-colors border border-white/10"
+                            >
+                                Manage Billing
+                            </button>
+                        </div>
+                    )}
 
                     {/* Avatar Upload (Optional) */}
                     <div className="flex flex-col items-center gap-4 p-6 border border-dashed border-white/20 rounded-2xl bg-white/5 transition-colors hover:bg-white/10">

@@ -50,7 +50,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'r
                     .single();
 
                 if (!profile) {
-                    router.push('/onboarding');
+                    router.push('/subscription');
                 }
             }
 
@@ -108,8 +108,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'r
                             .eq('code', inviteCode.trim());
                     }
 
-                    // 4. Redirect to onboarding
-                    router.push('/onboarding');
+                    // 4. Redirect to subscription
+                    router.push('/subscription');
                     onClose();
                 } else {
                     // Email confirmation required
@@ -126,15 +126,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'r
     };
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div className="bg-[#1a1a1a] border border-white/10 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl animate-scale-up">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white border border-gray-100 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl animate-scale-up">
 
                 {/* Header */}
-                <div className="flex justify-between items-center p-6 border-b border-white/5">
-                    <h2 className="text-xl font-bold text-white tracking-tight">
+                <div className="flex justify-between items-center p-6 border-b border-gray-100">
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">
                         {view === 'login' ? 'Welcome Back' : 'Vendor Access'}
                     </h2>
-                    <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-900 transition-colors">
                         <X size={24} />
                     </button>
                 </div>
@@ -142,7 +142,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'r
                 {/* Body */}
                 <div className="p-6">
                     {error && (
-                        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                        <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-100 rounded-lg text-sm">
                             {error}
                         </div>
                     )}
@@ -152,12 +152,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'r
                         {/* Invite Code (Register Only) */}
                         {view === 'register' && (
                             <div className="space-y-1">
-                                <label className="text-xs font-mono text-white/50 uppercase tracking-widest">Invite Code (Optional)</label>
+                                <label className="text-xs font-mono text-gray-400 uppercase tracking-widest">Invite Code (Optional)</label>
                                 <input
                                     type="text"
                                     value={inviteCode}
                                     onChange={(e) => setInviteCode(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-white/30 transition-colors"
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:border-black transition-colors placeholder:text-gray-400"
                                     placeholder="ENTER-CODE"
                                 />
                             </div>
@@ -165,26 +165,26 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'r
 
                         {/* Email */}
                         <div className="space-y-1">
-                            <label className="text-xs font-mono text-white/50 uppercase tracking-widest">Email</label>
+                            <label className="text-xs font-mono text-gray-400 uppercase tracking-widest">Email</label>
                             <input
                                 type="email"
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-white/30 transition-colors"
+                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:border-black transition-colors placeholder:text-gray-400"
                                 placeholder="you@example.com"
                             />
                         </div>
 
                         {/* Password */}
                         <div className="space-y-1">
-                            <label className="text-xs font-mono text-white/50 uppercase tracking-widest">Password</label>
+                            <label className="text-xs font-mono text-gray-400 uppercase tracking-widest">Password</label>
                             <input
                                 type="password"
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-white/30 transition-colors"
+                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:border-black transition-colors placeholder:text-gray-400"
                                 placeholder="••••••••"
                             />
                         </div>
@@ -192,13 +192,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'r
                         {/* Confirm Password (Register Only) */}
                         {view === 'register' && (
                             <div className="space-y-1">
-                                <label className="text-xs font-mono text-white/50 uppercase tracking-widest">Confirm Password</label>
+                                <label className="text-xs font-mono text-gray-400 uppercase tracking-widest">Confirm Password</label>
                                 <input
                                     type="password"
                                     required
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-white/30 transition-colors"
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:border-black transition-colors placeholder:text-gray-400"
                                     placeholder="••••••••"
                                 />
                             </div>
@@ -207,7 +207,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'r
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full mt-6 bg-white text-black font-bold py-3.5 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full mt-6 bg-black text-white font-bold py-3.5 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                         >
                             {loading ? <Loader2 className="animate-spin" size={20} /> : (
                                 <>
@@ -220,15 +220,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialView = 'r
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 bg-white/5 border-t border-white/5 text-center">
-                    <p className="text-white/60 text-sm">
+                <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                    <p className="text-gray-500 text-sm">
                         {view === 'login' ? "Don't have an account? " : "Already have an account? "}
                         <button
                             onClick={() => {
                                 setView(view === 'login' ? 'register' : 'login');
                                 setError(null);
                             }}
-                            className="text-white font-bold hover:underline"
+                            className="text-black font-bold hover:underline"
                         >
                             {view === 'login' ? 'Register' : 'Login'}
                         </button>
