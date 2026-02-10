@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseAdmin } from '@/utils/supabaseAdmin';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-12-15.clover', // Update to match your installed version if needed
-});
+const STRIPE_API_VERSION = '2025-12-15.clover';
+
+const getStripe = () => {
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    if (!apiKey) {
+        throw new Error('Missing STRIPE_SECRET_KEY');
+    }
+
+    return new Stripe(apiKey, {
+        apiVersion: STRIPE_API_VERSION, // Update to match your installed version if needed
+    });
+};
 
 export async function POST(req: NextRequest) {
     try {
@@ -23,6 +32,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Create Stripe Checkout Session
+        const stripe = getStripe();
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             mode: 'subscription',

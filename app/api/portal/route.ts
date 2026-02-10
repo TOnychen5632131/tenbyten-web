@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseAdmin } from '@/utils/supabaseAdmin';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-12-15.clover', // Using latest or matching checkout version
-});
+const STRIPE_API_VERSION = '2025-12-15.clover';
+
+const getStripe = () => {
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    if (!apiKey) {
+        throw new Error('Missing STRIPE_SECRET_KEY');
+    }
+
+    return new Stripe(apiKey, {
+        apiVersion: STRIPE_API_VERSION, // Using latest or matching checkout version
+    });
+};
 
 export async function POST(req: NextRequest) {
     try {
@@ -33,6 +42,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Create Portal Session
+        const stripe = getStripe();
         const session = await stripe.billingPortal.sessions.create({
             customer: subData.stripe_customer_id,
             return_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/onboarding`,

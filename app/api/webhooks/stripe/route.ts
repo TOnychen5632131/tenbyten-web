@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseAdmin } from '@/utils/supabaseAdmin';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-12-15.clover',
-});
+const STRIPE_API_VERSION = '2025-12-15.clover';
 
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+const getStripe = () => {
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    if (!apiKey) {
+        throw new Error('Missing STRIPE_SECRET_KEY');
+    }
+
+    return new Stripe(apiKey, {
+        apiVersion: STRIPE_API_VERSION,
+    });
+};
 
 export async function POST(req: NextRequest) {
     const body = await req.text();
@@ -15,6 +22,8 @@ export async function POST(req: NextRequest) {
     let event: Stripe.Event;
 
     try {
+        const stripe = getStripe();
+        const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
         if (!sig || !endpointSecret) {
             throw new Error('Missing Stripe signature or secret');
         }
